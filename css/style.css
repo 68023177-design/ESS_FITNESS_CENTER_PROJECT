@@ -1039,4 +1039,116 @@ a:hover { color: var(--lime); }
   .field-row { flex-direction: column; gap: 0; }
   .footer-modern .footer-inner { grid-template-columns: 1fr; padding: 44px 20px 28px; }
   .footer-brand { grid-column: auto; }
+}/* ============================================================
+   ESS Fitness - v1.2 additions (member card, check-in, stats, notifs)
+   ============================================================ */
+
+/* ----- navbar notification bell ----- */
+.nav-bell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 10px;
+  color: #d6dcec;
+  text-decoration: none;
 }
+.nav-bell:hover { background: rgba(255,255,255,.08); color: #fff; }
+.nav-bell-badge {
+  position: absolute;
+  top: 2px;
+  right: 0;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--orange);
+  color: #fff;
+  font-size: 10px;
+  line-height: 16px;
+  text-align: center;
+  font-weight: 700;
+}
+
+/* ----- member card ----- */
+.member-card {
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(160deg, #151d30, #101726);
+  padding: 18px;
+  max-width: 360px;
+  margin: 0 auto;
+  text-align: center;
+  box-shadow: var(--shadow-lg);
+  position: relative;
+  overflow: hidden;
+}
+.member-card::before {
+  content: "";
+  position: absolute; inset: 0;
+  background: radial-gradient(220px 120px at 50% -20%, rgba(124,58,237,.35), transparent 70%);
+  pointer-events: none;
+}
+.member-ok { border-color: rgba(74,222,128,.4); }
+.member-warn { border-color: rgba(233,196,106,.4); }
+.member-expired { border-color: rgba(248,113,113,.45); filter: saturate(.85); }
+.member-card-head {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  position: relative;
+}
+.member-card-logo {
+  background: var(--brand-grad);
+  color: #fff; border-radius: 10px; padding: 4px 10px;
+  font-weight: 800; letter-spacing: 1px; font-size: .8rem;
+}
+.member-card-name { font-family: var(--font-display); font-weight: 800; }
+.member-card-qr {
+  margin: 14px auto 10px;
+  max-width: 240px;
+  background: #fff;
+  border-radius: 14px;
+  padding: 10px;
+  position: relative;
+}
+.member-card-qr canvas { display: block; width: 100%; height: auto; }
+.member-card-qr span { display: block; margin-top: 6px; font-size: .8rem; }
+.member-card-foot { display: flex; flex-direction: column; gap: 8px; align-items: center; position: relative; }
+
+/* ----- notifications list ----- */
+.notif-list { display: flex; flex-direction: column; gap: 6px; }
+.notif-row {
+  display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--glass);
+}
+.notif-unread { border-color: rgba(124,58,237,.45); background: rgba(124,58,237,.08); }
+.notif-time { font-size: .78rem; color: var(--muted-2); margin-top: 2px; }
+
+/* ----- bar charts (CSS only, no deps) ----- */
+.barchart-row { display: flex; align-items: flex-end; gap: 6px; height: 200px; overflow-x: auto; padding-top: 6px; }
+.barchart-col { flex: 1; min-width: 22px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; }
+.barchart-bar { width: 100%; max-width: 34px; background: var(--brand-grad); border-radius: 6px 6px 0 0; position: relative; transition: filter .2s; }
+.barchart-col:hover .barchart-bar { filter: brightness(1.2); }
+.barchart-val { position: absolute; top: -18px; left: 50%; transform: translateX(-50%); font-size: .7rem; color: var(--muted); white-space: nowrap; }
+.barchart-label { margin-top: 6px; font-size: .72rem; color: var(--muted-2); white-space: nowrap; }
+
+/* ----- stat rows (package popularity / expiring) ----- */
+.stat-row { display: flex; align-items: center; gap: 10px; padding: 7px 2px; }
+.stat-pct { flex: 1; height: 8px; border-radius: 999px; background: rgba(255,255,255,.07); overflow: hidden; }
+.stat-pct div { height: 100%; background: var(--brand-grad); border-radius: 999px; }
+
+/* ----- check-in page ----- */
+#scanner-box { position: relative; }
+#qr-video, .scan-canvas { width: 100%; border-radius: 12px; background: #000; }
+.scan-canvas { display: none; }
+.sub-row-columns { display: flex; flex-direction: column; gap: 8px; }
+.checkin-found { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.checkin-status-icon {
+  width: 58px; height: 58px; margin: 0 auto 10px;
+  border-radius: 999px; display: grid; place-items: center;
+  font-size: 26px; font-weight: 800; color: #fff;
+  background: linear-gradient(135deg, #4ade80, #16a34a);
+}
+.checkin-status-icon-no { background: linear-gradient(135deg, #f87171, #dc2626); }
+.checkin-modal-body { text-align: center; }
+.checkin-modal-body .member-card-name { font-size: 1.4rem; }
+.checkin-ok, .checkin-no { padding: 8px 0 16px; }

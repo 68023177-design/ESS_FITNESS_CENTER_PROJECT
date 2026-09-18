@@ -22,11 +22,39 @@
     </div>
 
     <div class="tabs">
+      <button type="button" class="tab-btn" data-tab-btn="stats">สถิติ</button>
       <button type="button" class="tab-btn" data-tab-btn="packages">แพคเกจ</button>
       <button type="button" class="tab-btn" data-tab-btn="payments">การชำระเงิน</button>
       <button type="button" class="tab-btn" data-tab-btn="members">สมาชิก</button>
       <button type="button" class="tab-btn" data-tab-btn="news">ข่าวสาร</button>
       <button type="button" class="tab-btn" data-tab-btn="settings">ตั้งค่า</button>
+    </div>
+
+    <div class="tab-pane tab-show" data-tab-pane="stats">
+      <div class="pane-head">
+        <h2>สถิติ &amp; แดชบอร์ด</h2>
+        <a href="checkin.html" class="btn btn-primary">บันทึกเช็คอิน</a>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <h3 class="card-title">ผู้ใช้บริการ 14 วันล่าสุด</h3>
+          <div id="chart-visits" class="barchart"></div>
+        </div>
+        <div class="card">
+          <h3 class="card-title">รายได้ 6 เดือนล่าสุด</h3>
+          <div id="chart-revenue" class="barchart"></div>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <h3 class="card-title">แพคเกจยอดนิยม</h3>
+          <div id="stats-packages"></div>
+        </div>
+        <div class="card">
+          <h3 class="card-title">สมาชิกใกล้หมดอายุ</h3>
+          <div id="stats-expiring"></div>
+        </div>
+      </div>
     </div>
 
     <div class="tab-pane tab-show" data-tab-pane="packages">

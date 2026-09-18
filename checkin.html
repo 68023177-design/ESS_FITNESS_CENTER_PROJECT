@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>บันทึกเช็คอิน - ESS Fitness Center</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏋️</text></svg>">
+</head>
+<body data-page="checkin">
+  <nav id="navbar" class="navbar"></nav>
+  <div id="toast-box" class="toast-box"></div>
+
+  <main class="container">
+    <div class="pane-head">
+      <h1 class="section-title">บันทึกเช็คอิน</h1>
+      <div class="row-actions">
+        <button type="button" id="btn-camera-toggle" class="btn btn-primary">เปิดกล้องสแกน</button>
+        <span class="muted" id="today-count"></span>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <h2 class="card-title">สแกนคิวอาร์โค้ดการ์ดสมาชิก</h2>
+        <div id="scanner-box">
+          <video id="qr-video" muted playsinline></video>
+          <canvas id="qr-canvas" class="scan-canvas"></canvas>
+          <div id="scan-hint" class="muted">กด "เปิดกล้องสแกน" แล้วชี้กล้องไปที่การ์ดสมาชิก</div>
+        </div>
+        <div class="field" style="margin-top:12px;">
+          <label for="member-code-input">หรือกรอกรหัสสมาชิก / ค้นหาสมาชิก</label>
+          <input type="text" id="member-code-input" placeholder="รหัส 8 ตัวแรกของสมาชิก ที่อยู่ใต้ QR">
+        </div>
+        <button type="button" id="btn-search-member" class="btn btn-outline btn-block">ค้นหา / เช็คสิทธิ์</button>
+      </div>
+
+      <div class="card">
+        <h2 class="card-title">ผลการตรวจสอบ</h2>
+        <div id="checkin-result">
+          <p class="muted">สแกนหรือค้นหาสมาชิกก่อน แล้วระบบจะแสดงผลที่นี่</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 class="card-title">ประวัติเช็คอินวันนี้</h2>
+      <div id="today-visits"></div>
+    </div>
+  </main>
+
+  <div class="modal" id="checkin-modal">
+    <div class="modal-box modal-box-slip">
+      <div class="modal-head">
+        <h3>ผลเช็คอิน</h3>
+        <button type="button" id="checkin-modal-close" class="modal-close">✕</button>
+      </div>
+      <div id="checkin-modal-body" class="checkin-modal-body"></div>
+    </div>
+  </div>
+
+  <script src="js/vendor/supabase.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/vendor/jsqr.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/checkin.js"></script>
+</body>
+</html>

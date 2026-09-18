@@ -81,6 +81,7 @@
       active: ['สมัครแล้ว (Active)', 'badge-active'],
       rejected: ['ไม่อนุมัติ', 'badge-rejected'],
       expired: ['หมดอายุ', 'badge-expired'],
+      cancelled: ['ยกเลิกแล้ว', 'badge-expired'],
     };
     const m = map[s] || [s, 'badge'];
     return '<span class="badge ' + m[1] + '">' + m[0] + '</span>';
@@ -117,6 +118,10 @@
     if (session) {
       inner += '<a href="profile.html" data-nav="profile">โปรไฟล์</a>';
       if (isAdmin) inner += '<a href="admin.html" data-nav="admin">จัดการระบบ</a>';
+      if (isAdmin) inner += '<a href="checkin.html" data-nav="checkin">เช็คอิน</a>';
+      inner += '<a href="profile.html" class="nav-bell" id="nav-bell" title="การแจ้งเตือน" aria-label="การแจ้งเตือน">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>' +
+        '<span id="nav-bell-badge" class="nav-bell-badge" style="display:none;">0</span></a>';
       inner += '<button type="button" class="btn-link" id="btn-logout">ออกจากระบบ</button>';
     } else {
       inner += '<a href="login.html" data-nav="login" class="nav-cta">เข้าสู่ระบบ</a>';
@@ -148,10 +153,29 @@
     const logoutBtn = document.getElementById('btn-logout');
     if (logoutBtn) logoutBtn.addEventListener('click', logout);
 
+    if (session) startNotifPoller();
+
     if (active) {
       const target = nav.querySelector('[data-nav="' + active + '"]');
       if (target) target.classList.add('nav-active');
     }
+  }
+
+  // Unread-notification badge in the navbar (poll every 30s)
+  async function refreshBell() {
+    const badge = document.getElementById('nav-bell-badge');
+    if (!badge) return;
+    const { count } = await client
+      .from('notifications')
+      .select('id', { count: 'exact', head: true })
+      .eq('read_at', null);
+    const n = count || 0;
+    badge.textContent = n > 99 ? '99+' : String(n);
+    badge.style.display = n > 0 ? 'block' : 'none';
+  }
+  function startNotifPoller() {
+    refreshBell();
+    setInterval(refreshBell, 30000);
   }
 
   window.ess.client = client;

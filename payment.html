@@ -23,6 +23,7 @@
         </div>
         <p class="muted">1. สแกนคิวอาร์โค้ดด้วยแอปธนาคาร แล้วโอนตามยอดที่แสดง</p>
         <p class="muted">2. ถ่ายรูปสลิปการโอน แล้วอัปโหลดด้านล่างเพื่อยืนยันการชำระเงิน</p>
+        <p id="pay-stale-hint" class="muted" style="display:none;">คำสั่งซื้อนี้ค้างนานเกิน 48 ชั่วโมงแล้ว และอาจถูกยกเลิกอัตโนมัติ หากยังอยากชำระ กรุณากด "ยกเลิก" แล้วสมัครใหม่</p>
 
         <div class="field">
           <label for="slip-file">รูปสลิปการโอนเงิน</label>
@@ -30,9 +31,21 @@
         </div>
         <div id="slip-preview" class="slip-preview"></div>
         <button type="button" id="btn-submit-slip" class="btn btn-primary btn-block">ยืนยันชำระเงิน</button>
+        <button type="button" id="btn-cancel-sub" class="btn btn-outline btn-block">ยกเลิกคำสั่งซื้อ</button>
+      </div>
+
+      <div id="pay-resubmit" style="display:none;">
+        <p id="pay-resubmit-note" class="muted"></p>
+        <div class="field">
+          <label for="slip-file-2">รูปสลิปการโอนเงิน (ส่งใหม่)</label>
+          <input type="file" id="slip-file-2" accept="image/*" required>
+        </div>
+        <div id="slip-preview-2" class="slip-preview"></div>
+        <button type="button" id="btn-submit-slip-2" class="btn btn-primary btn-block">ยืนยันส่งสลิปใหม่</button>
       </div>
 
       <div id="pay-done" style="display:none;">
+        <p id="pay-receipt" class="muted"></p>
         <p class="muted">สถานะคำสั่งซื้อนี้ถูกตรวจสอบแล้ว คุณสามารถติดตามได้ที่หน้าโปรไฟล์</p>
         <div id="slip-preview-done" class="slip-preview"></div>
         <a href="profile.html" class="btn btn-primary">ไปหน้าโปรไฟล์</a>

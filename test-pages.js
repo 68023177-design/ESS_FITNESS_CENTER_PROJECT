@@ -6,9 +6,10 @@ const required = {
   'login.html': ['login-form', 'email', 'password', 'form-error'],
   'register.html': ['register-form', 'full-name', 'email', 'student-id', 'phone', 'sex', 'password', 'confirm-password', 'form-error'],
   'subscribe.html': ['package-box', 'btn-create-sub'],
-  'payment.html': ['pay-sub-status', 'pay-step', 'pay-done', 'qr-canvas', 'qr-amount-hint', 'slip-file', 'slip-preview', 'slip-preview-done', 'btn-submit-slip'],
-  'profile.html': ['pv-email', 'pv-name', 'pv-student', 'pv-phone', 'pv-sex', 'pv-role', 'pv-joined', 'profile-edit-form', 'pe-full-name', 'pe-student-id', 'pe-phone', 'pe-sex', 'pw-form', 'pw-new', 'my-subs'],
-  'admin.html': ['stat-members', 'stat-sub', 'stat-pending', 'stat-subs', 'packages-table', 'btn-add-pkg', 'pkg-modal', 'pkg-form', 'pkg-name', 'pkg-desc', 'pkg-price', 'pkg-duration', 'pkg-active', 'pkg-modal-title', 'pkg-modal-close', 'pkg-modal-cancel', 'members-table', 'member-search', 'subs-list', 'slip-modal', 'slip-modal-img', 'slip-modal-close', 'settings-form', 'set-promptpay', 'btn-add-news', 'news-admin-list', 'news-modal', 'news-form', 'news-title', 'news-content', 'news-img-file', 'news-img-preview', 'news-published', 'news-existing-img', 'news-modal-title', 'news-modal-close', 'news-modal-cancel'],
+  'payment.html': ['pay-sub-status', 'pay-step', 'pay-done', 'qr-canvas', 'qr-amount-hint', 'slip-file', 'slip-preview', 'slip-preview-done', 'btn-submit-slip', 'pay-stale-hint', 'btn-cancel-sub', 'pay-resubmit', 'pay-resubmit-note', 'slip-file-2', 'slip-preview-2', 'btn-submit-slip-2', 'pay-receipt'],
+  'profile.html': ['pv-email', 'pv-name', 'pv-student', 'pv-phone', 'pv-sex', 'pv-role', 'pv-joined', 'profile-edit-form', 'pe-full-name', 'pe-student-id', 'pe-phone', 'pe-sex', 'pw-form', 'pw-new', 'my-subs', 'member-card-wrap', 'my-notifs'],
+  'admin.html': ['stat-members', 'stat-sub', 'stat-pending', 'stat-subs', 'chart-visits', 'chart-revenue', 'stats-packages', 'stats-expiring', 'packages-table', 'btn-add-pkg', 'pkg-modal', 'pkg-form', 'pkg-name', 'pkg-desc', 'pkg-price', 'pkg-duration', 'pkg-active', 'pkg-modal-title', 'pkg-modal-close', 'pkg-modal-cancel', 'members-table', 'member-search', 'subs-list', 'slip-modal', 'slip-modal-img', 'slip-modal-close', 'settings-form', 'set-promptpay', 'btn-add-news', 'news-admin-list', 'news-modal', 'news-form', 'news-title', 'news-content', 'news-img-file', 'news-img-preview', 'news-published', 'news-existing-img', 'news-modal-title', 'news-modal-close', 'news-modal-cancel'],
+  'checkin.html': ['btn-camera-toggle', 'qr-video', 'qr-canvas', 'scan-hint', 'member-code-input', 'btn-search-member', 'checkin-result', 'today-count', 'today-visits', 'checkin-modal', 'checkin-modal-close', 'checkin-modal-body'],
 };
 
 let fail = 0;

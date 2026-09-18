@@ -16,6 +16,7 @@
     await loadSubscriptions();
     await loadSettings();
     await loadNews();
+    await loadStatsTab();
   });
 
   function initTabs() {
@@ -396,7 +397,7 @@
         '<div class="admin-sub">' +
         '<div class="admin-sub-info">' +
         '<strong>' + ess.esc(prof.full_name || prof.email || 'สมาชิก') + '</strong>' +
-        '<span>฿' + ess.formatMoney(s.amount) + ' · ' + ess.esc(s.package_name) + '</span>' +
+        '<span>เลขที่ ' + ess.esc(s.order_no || '-') + ' · ฿' + ess.formatMoney(s.amount) + ' · ' + ess.esc(s.package_name) + '</span>' +
         '<span class="muted">' + ess.esc(prof.email || '') + ' · ' + ess.formatDate(s.created_at) + '</span>' +
         (s.admin_note ? '<span class="muted">หมายเหตุ: ' + ess.esc(s.admin_note) + '</span>' : '') +
         '</div>' +
@@ -430,38 +431,21 @@
 
   async function approveSub(id) {
     if (!confirm('ยืนยันการอนุมัติชำระเงินและเปิดใช้งานแพคเกจ?')) return;
-    const { data: sub } = await supabase.from('subscriptions').select('*').eq('id', id).maybeSingle();
-    if (!sub) return;
-    const pkg = packagesMap[sub.package_id] || {};
-    const months = pkg.duration_months || 1;
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(start);
-    end.setMonth(end.getMonth() + months);
-    const { error } = await supabase
-      .from('subscriptions')
-      .update({
-        status: 'active',
-        start_date: start.toISOString().slice(0, 10),
-        end_date: end.toISOString().slice(0, 10),
-        paid_at: new Date().toISOString(),
-        admin_note: '',
-      })
-      .eq('id', id);
+    const { data, error } = await supabase.rpc('admin_approve_subscription', { p_sub_id: id, p_admin_note: '' });
     if (error) { ess.toast('เกิดข้อผิดพลาด: ' + error.message, 'error'); return; }
-    ess.toast('อนุมัติแล้ว สมาชิกใช้งานได้ถึง ' + ess.formatDate(end), 'success');
+    if (!data) { ess.toast('ไม่อนุมัติได้ (สถานะไม่ใช่ pending)', 'error'); return; }
+    ess.toast('อนุมัติแล้ว สมาชิกใช้งานได้ (แจ้งเตือนถูกส่งแล้ว)', 'success');
     loadSubscriptions();
     loadStats();
+    loadStatsTab();
   }
 
   async function rejectSub(id) {
     const note = prompt('หมายเหตุการไม่อนุมัติ (ไม่บังคับ):', '');
     if (note === null) return;
-    const { error } = await supabase
-      .from('subscriptions')
-      .update({ status: 'rejected', admin_note: note || '' })
-      .eq('id', id);
+    const { data, error } = await supabase.rpc('admin_reject_subscription', { p_sub_id: id, p_note: note || '' });
     if (error) { ess.toast('เกิดข้อผิดพลาด: ' + error.message, 'error'); return; }
+    if (!data) { ess.toast('ไม่อนุมัติได้ (สถานะไม่ใช่ pending)', 'error'); return; }
     ess.toast('ไม่อนุมัติคำสั่งซื้อแล้ว', 'success');
     loadSubscriptions();
     loadStats();
@@ -494,4 +478,134 @@
   document.getElementById('slip-modal-close').addEventListener('click', function () {
     document.getElementById('slip-modal').classList.remove('modal-show');
   });
+
+  // ---------------- STATS DASHBOARD ----------------
+  async function loadStatsTab() {
+    loadVisitChart();
+    loadRevenueChart();
+    loadPkgStats();
+    loadExpiring();
+  }
+
+  function renderBarChart(elId, labels, values, money) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    if (!labels.length) { el.innerHTML = '<p class="muted">ยังไม่มีข้อมูล</p>'; return; }
+    const max = Math.max.apply(null, values.concat([1]));
+    el.innerHTML = '<div class="barchart-row">' + labels.map(function (lab, i) {
+      const h = Math.max(4, Math.round((values[i] / max) * 150));
+      return (
+        '<div class="barchart-col" title="' + ess.esc(lab) + ': ' +
+        (money ? ess.formatMoney(values[i]) : values[i]) + '">' +
+        '<div class="barchart-bar" style="height:' + h + 'px;">' +
+        '<span class="barchart-val">' + (money ? Math.round(values[i]) : values[i]) + '</span></div>' +
+        '<span class="barchart-label">' + ess.esc(lab) + '</span></div>'
+      );
+    }).join('') + '</div>';
+  }
+
+  async function loadVisitChart() {
+    const since = new Date();
+    since.setDate(since.getDate() - 13);
+    since.setHours(0, 0, 0, 0);
+    const { data } = await supabase
+      .from('visits')
+      .select('checked_in_at')
+      .gte('checked_in_at', since.toISOString())
+      .order('checked_in_at', { ascending: true });
+    const days = [];
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i); d.setHours(0, 0, 0, 0);
+      const key = d.toISOString().slice(0, 10);
+      days.push({ key: key, label: (d.getMonth() + 1) + '/' + d.getDate(), n: 0 });
+    }
+    (data || []).forEach(function (v) {
+      const key = new Date(v.checked_in_at).toISOString().slice(0, 10);
+      const day = days.find(function (x) { return x.key === key; });
+      if (day) day.n++;
+    });
+    renderBarChart('chart-visits', days.map(function (d) { return d.label; }), days.map(function (d) { return d.n; }), false);
+  }
+
+  async function loadRevenueChart() {
+    const since = new Date();
+    since.setMonth(since.getMonth() - 5);
+    since.setDate(1); since.setHours(0, 0, 0, 0);
+    const { data } = await supabase
+      .from('subscriptions')
+      .select('amount, paid_at, status')
+      .gte('paid_at', since.toISOString())
+      .not('status', 'eq', 'rejected')
+      .not('status', 'eq', 'cancelled');
+    const months = [];
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push({ key: d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'), label: (d.getMonth() + 1) + '/', sum: 0 });
+    }
+    (data || []).forEach(function (s) {
+      if (!s.paid_at) return;
+      const key = new Date(s.paid_at).toISOString().slice(0, 7);
+      const m = months.find(function (x) { return x.key === key; });
+      if (m) m.sum += Number(s.amount) || 0;
+    });
+    renderBarChart('chart-revenue', months.map(function (m) { return m.label; }), months.map(function (m) { return m.sum; }), true);
+  }
+
+  async function loadPkgStats() {
+    const { data } = await supabase
+      .from('subscriptions')
+      .select('package_name, status')
+      .in('status', ['active', 'expired']);
+    const box = document.getElementById('stats-packages');
+    if (!box) return;
+    const tally = {};
+    (data || []).forEach(function (s) {
+      tally[s.package_name] = (tally[s.package_name] || 0) + 1;
+    });
+    const rows = Object.keys(tally).sort(function (a, b) { return tally[b] - tally[a]; });
+    const total = rows.reduce(function (sum, k) { return sum + tally[k]; }, 0);
+    if (!rows.length) { box.innerHTML = '<p class="muted">ยังไม่มีข้อมูล</p>'; return; }
+    box.innerHTML = rows.map(function (k) {
+      const pct = total ? Math.round((tally[k] / total) * 100) : 0;
+      return (
+        '<div class="stat-row"><span>' + ess.esc(k) + '</span>' +
+        '<div class="stat-pct"><div style="width:' + pct + '%;"></div></div>' +
+        '<span> ' + tally[k] + ' คน</span></div>'
+      );
+    }).join('');
+  }
+
+  async function loadExpiring() {
+    const today = new Date();
+    const fmt = function (d) { return d.toISOString().slice(0, 10); };
+    const windowEnd = new Date();
+    windowEnd.setDate(windowEnd.getDate() + 30);
+    const { data } = await supabase
+      .from('subscriptions')
+      .select('*, profiles(full_name, email)')
+      .eq('status', 'active')
+      .gte('end_date', fmt(today))
+      .lte('end_date', fmt(windowEnd))
+      .order('end_date', { ascending: true });
+    const box = document.getElementById('stats-expiring');
+    if (!box) return;
+    if (!data || !data.length) {
+      box.innerHTML = '<p class="muted">ไม่มีสมาชิกหมดอายุภายใน 30 วัน</p>';
+      return;
+    }
+    const daysLeft = function (end) {
+      const dif = Math.ceil((new Date(end) - new Date()) / 86400000);
+      return dif <= 7
+        ? '<span class="badge badge-rejected">' + dif + ' วัน</span>'
+        : '<span class="badge badge-pending">' + dif + ' วัน</span>';
+    };
+    box.innerHTML = data.map(function (s) {
+      const prof = s.profiles || {};
+      return (
+        '<div class="sub-row"><div><strong>' + ess.esc(prof.full_name || 'สมาชิก') + '</strong> ' + daysLeft(s.end_date) +
+        '<br><span class="muted">' + ess.esc(prof.email || '') + ' · หมด ' + ess.formatDate(s.end_date) + '</span></div></div>'
+      );
+    }).join('');
+  }
 })();

@@ -41,8 +41,19 @@
     await ess.renderNav(
       page === 'subscribe' || page === 'payment' ? 'packages' : page
     );
+    maybeRunMaintenance();
     if (handlers[page]) await handlers[page]();
   });
+
+  // Maintenance RPCs are harmless & idempotent; run once per session
+  // so stale pending orders get cancelled even without pg_cron enabled.
+  async function maybeRunMaintenance() {
+    if (sessionStorage.getItem('ess-maint-done')) return;
+    if (!(await ess.getSession())) return;
+    sessionStorage.setItem('ess-maint-done', '1');
+    supabase.rpc('expire_pending_orders', { p_hours: 48 }).catch(function () {});
+    supabase.rpc('expire_subscriptions').catch(function () {});
+  }
 
   // ---------------- HOME ----------------
   async function initHome() {
@@ -279,7 +290,8 @@
       .eq('id', subId)
       .maybeSingle();
     if (error || !sub || sub.user_id !== ctx.session.user.id) {
-      document.getElementById('pay-body').innerHTML = '<p class="muted">ไม่พบคำสั่งซื้อนี้</p>';
+      const s = document.getElementById('pay-sub-status');
+      if (s) s.innerHTML = '<p class="muted">ไม่พบคำสั่งซื้อนี้</p>';
       return;
     }
 
@@ -289,20 +301,89 @@
 
     const statusEl = document.getElementById('pay-sub-status');
     statusEl.innerHTML =
-      'คำสั่งซื้อ: <strong>' + ess.esc(sub.package_name) + '</strong> — จำนวนเงิน <strong>฿' +
-      ess.formatMoney(sub.amount) + '</strong> ' + ess.statusLabel(sub.status);
+      'เลขที่คำสั่งซื้อ: <strong>' + ess.esc(sub.order_no || '-') + '</strong> — ' +
+      ess.esc(sub.package_name) + ' · ฿' + ess.formatMoney(sub.amount) +
+      ' ' + ess.statusLabel(sub.status);
 
     if (sub.status === 'pending') {
       document.getElementById('pay-step').style.display = 'block';
       renderQR(sub.amount, promptpayId);
       initSlipUpload(sub);
+      initCancelSub(sub);
+      const stale = sub.created_at && (Date.now() - new Date(sub.created_at).getTime()) > 48 * 3600 * 1000;
+      const staleHint = document.getElementById('pay-stale-hint');
+      if (staleHint) {
+        staleHint.style.display = stale ? 'block' : 'none';
+      }
+    } else if (sub.status === 'rejected') {
+      document.getElementById('pay-resubmit').style.display = 'block';
+      document.getElementById('pay-resubmit-note').textContent =
+        sub.admin_note ? 'หมายเหตุจากผู้ดูแล: ' + sub.admin_note : 'โปรดส่งหลักฐานการชำระเงินใหม่อีกครั้ง';
+      initResubmit(sub);
     } else {
-      document.getElementById('pay-step').style.display = 'none';
       document.getElementById('pay-done').style.display = 'block';
+      const z = document.getElementById('pay-receipt');
+      if (z) {
+        z.innerHTML = '<strong>' + ess.esc(sub.order_no || '-') + '</strong> · ' +
+          ess.esc(sub.package_name) + ' · ฿' + ess.formatMoney(sub.amount) +
+          (sub.start_date ? ' · ' + ess.formatDate(sub.start_date) + ' — ' + ess.formatDate(sub.end_date) : '');
+      }
       if (sub.slip_path) {
         showSlipThumb(sub.slip_path);
       }
     }
+  }
+
+  async function initCancelSub(sub) {
+    const btn = document.getElementById('btn-cancel-sub');
+    if (!btn) return;
+    btn.addEventListener('click', async function () {
+      if (!confirm('ยกเลิกคำสั่งซื้อนี้?')) return;
+      const { data, error } = await supabase.rpc('cancel_subscription', { p_sub_id: sub.id });
+      if (error) { ess.toast('ยกเลิกไม่สำเร็จ: ' + error.message, 'error'); return; }
+      ess.toast(data ? 'ยกเลิกคำสั่งซื้อแล้ว' : 'ไม่สามารถยกเลิกได้ (สถานะเปลี่ยนไปแล้ว)', 'success');
+      setTimeout(function () { window.location.reload(); }, 900);
+    });
+  }
+
+  async function initResubmit(sub) {
+    const input = document.getElementById('slip-file-2');
+    const preview = document.getElementById('slip-preview-2');
+    if (!input) return;
+    input.addEventListener('change', function () {
+      const f = input.files && input.files[0];
+      if (!f) return;
+      if (f.type.indexOf('image/') !== 0) { ess.toast('กรุณาเลือกไฟล์รูปภาพเท่านั้น', 'error'); return; }
+      if (f.size > 3 * 1024 * 1024) { ess.toast('รูปภาพต้องไม่เกิน 3 MB', 'error'); return; }
+      const reader = new FileReader();
+      reader.onload = function () {
+        preview.innerHTML = '<img class="slip-img" src="' + reader.result + '" alt="สลิปใหม่">';
+      };
+      reader.readAsDataURL(f);
+    });
+
+    document.getElementById('btn-submit-slip-2').addEventListener('click', async function () {
+      const f = input.files && input.files[0];
+      if (!f) { ess.toast('กรุณาเลือกรูปสลิปก่อน', 'error'); return; }
+      const btn = this;
+      btn.disabled = true; btn.textContent = 'กำลังส่งสลิป...';
+      const path = 'slips/' + sub.id + '-' + Date.now() + '-' + f.name.replace(/[^\w.\-]+/g, '_');
+      const { error: upError } = await supabase.storage.from('slips').upload(path, f, { upsert: false, contentType: f.type });
+      if (upError) {
+        ess.toast('อัปโหลดสลิปไม่สำเร็จ: ' + upError.message, 'error');
+        btn.disabled = false; btn.textContent = 'ยืนยันส่งสลิปใหม่';
+        return;
+      }
+      const { data, error } = await supabase.rpc('resubmit_subscription', { p_sub_id: sub.id, p_slip_path: path });
+      if (error) {
+        ess.toast('ไม่สำเร็จ: ' + error.message, 'error');
+        btn.disabled = false; btn.textContent = 'ยืนยันส่งสลิปใหม่';
+        return;
+      }
+      if (!data) { ess.toast('ส่งใหม่ไม่ได้ (คำสั่งซื้อนี้เปลี่ยนสถานะแล้ว)', 'error'); return; }
+      ess.toast('ส่งสลิปใหม่แล้ว รอแอดมินตรวจสอบ', 'success');
+      setTimeout(function () { window.location.href = 'profile.html'; }, 1200);
+    });
   }
 
   function renderQR(amount, promptpayId) {
@@ -431,27 +512,144 @@
       .select('*')
       .eq('user_id', p.id)
       .order('created_at', { ascending: false });
+
+    renderMemberCard(p, subs || []);
+    renderMySubs(p, subs || []);
+
+    // my notifications
+    const notifBox = document.getElementById('my-notifs');
+    if (notifBox) {
+      const { data: notifs } = await supabase
+        .from('notifications')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (!notifs || !notifs.length) {
+        notifBox.innerHTML = '<p class="muted">ยังไม่มีแจ้งเตือน</p>';
+      } else {
+        notifBox.innerHTML =
+          '<div class="notif-list">' + notifs.map(function (n) {
+            return (
+              '<div class="notif-row' + (n.read_at ? '' : ' notif-unread') + '">' +
+              '<div><strong>' + ess.esc(n.title) + '</strong><br>' +
+              '<span class="muted">' + ess.esc(n.body || '') + '</span>' +
+              '<div class="notif-time">' + ess.formatDate(n.created_at) + '</div></div>' +
+              (n.link ? '<a class="btn-link" href="' + ess.esc(n.link) + '">ดู</a>' : '') +
+              '</div>'
+            );
+          }).join('') + '</div>' +
+          '<button type="button" id="btn-notif-readall" class="btn btn-sm btn-outline" style="margin-top:12px;">ทำเครื่องหมายอ่านแล้วทั้งหมด</button>';
+        document.getElementById('btn-notif-readall').addEventListener('click', async function () {
+          const unread = notifs.filter(function (n) { return !n.read_at; });
+          if (!unread.length) { ess.toast('อ่านแล้วทั้งหมดแล้ว', 'info'); return; }
+          const { error } = await supabase
+            .from('notifications')
+            .update({ read_at: new Date().toISOString() })
+            .in('id', unread.map(function (n) { return n.id; }));
+          if (!error) window.location.reload();
+        });
+      }
+    }
+  }
+
+  // ---------------- MEMBER CARD (QR check-in) ----------------
+  function renderMemberCard(p, subs) {
+    const wrap = document.getElementById('member-card-wrap');
+    if (!wrap) return;
+    const hasActive = subs.some(function (s) { return s.status === 'active'; });
+    const activeSub = subs.find(function (s) { return s.status === 'active'; });
+
+    if (!p.member_code) {
+      wrap.innerHTML = '<p class="muted">การ์ดสมาชิกยังไม่พร้อมใช้งาน (กรุณาให้ผู้ดูแลรันการอัปเกรดฐานข้อมูล)</p>';
+      return;
+    }
+
+    let statusHtml;
+    let statusClass = 'member-card';
+    if (hasActive) {
+      statusClass = 'member-card member-ok';
+      statusHtml = '<span class="badge badge-active">สิทธิ์ใช้งานถึง ' + ess.formatDate(activeSub.end_date) +
+        ' (เหลือ ' + Math.max(0, Math.ceil((new Date(activeSub.end_date) - new Date()) / 86400000)) + ' วัน)</span>';
+    } else if (subs.some(function (s) { return s.status === 'pending' || s.status === 'rejected' || s.status === 'cancelled'; })) {
+      statusClass = 'member-card member-warn';
+      statusHtml = '<span class="badge badge-pending">ยังไม่มีสิทธิ์เข้าใช้ (รอชำระเงิน)</span>';
+    } else {
+      statusClass = 'member-card member-expired';
+      statusHtml = '<span class="badge badge-expired">หมดอายุสิทธิ์ — ต่ออายุแพคเกจเพื่อเข้าใช้</span>';
+    }
+
+    const canvas = document.createElement('canvas');
+    try {
+      const qr = window.QRCodeLib.buildMatrix(String(p.member_code), 'M');
+      window.QRCodeLib.renderToCanvas(canvas, qr, 6, 4);
+    } catch (e) {
+      canvas.width = canvas.height = 0;
+    }
+
+    wrap.innerHTML =
+      '<div class="' + statusClass + '">' +
+      '<div class="member-card-head"><span class="member-card-logo">ESS</span>' +
+      '<span class="member-card-name">' + ess.esc(p.full_name || 'สมาชิก') + '</span></div>' +
+      '<div class="member-card-qr"><canvas></canvas><span class="muted">โชว์ QR นี้กับเจ้าหน้าที่เพื่อเข้ายิม</span></div>' +
+      '<div class="member-card-foot">' + statusHtml +
+      '<span class="muted">รหัส ' + ess.esc(String(p.member_code).slice(0, 8).toUpperCase()) + '</span>' +
+      '</div></div>';
+
+    const cv = wrap.querySelector('canvas');
+    if (cv) {
+      wrap.querySelector('.member-card-qr').replaceChild(canvas, cv);
+    }
+  }
+
+  // ---------------- MY SUBSCRIPTIONS RENDER ----------------
+  function renderMySubs(p, subs) {
     const list = document.getElementById('my-subs');
-    if (!subs || !subs.length) {
-      list.innerHTML = '<p class="muted">ยังไม่มีแพคเกจที่สมัคร — <a href="index.html#packages">เลือกแพคเกจเลย</a></p>';
+    if (!list) return;
+    if (!subs.length) {
+      list.innerHTML = '<p class="muted">ยังไม่มีแพคเกจที่สมัคร — <a href="packages.html">เลือกแพคเกจเลย</a></p>';
       return;
     }
     list.innerHTML = subs.map(function (s) {
       let actions = '';
       let period = '';
-      if (s.status === 'pending') actions = ' <a class="btn-link" href="payment.html?sub=' + s.id + '">ไปชำระเงิน</a>';
+      if (s.status === 'pending') {
+        actions =
+          ' <a class="btn-link" href="payment.html?sub=' + s.id + '">ไปชำระเงิน</a>' +
+          ' <button type="button" class="btn-link" data-cancel-sub="' + s.id + '">ยกเลิก</button>';
+      }
+      if (s.status === 'active') {
+        actions = ' <a class="btn-link" href="subscribe.html?package=' + s.package_id + '&renew=1">ต่ออายุแพคเกจ</a>';
+      }
+      if (s.status === 'rejected') {
+        actions = ' <a class="btn-link" href="payment.html?sub=' + s.id + '">ส่งสลิปใหม่</a>';
+      }
+      if (s.status === 'expired') {
+        actions = ' <a class="btn-link" href="subscribe.html?package=' + s.package_id + '&renew=1">สมัครใหม่ / ต่ออายุ</a>';
+      }
       if (s.start_date) {
         period = 'เริ่ม ' + ess.formatDate(s.start_date) + ' — ' + ess.formatDate(s.end_date);
       }
+      const note = s.admin_note ? '<br><span class="muted">หมายเหตุ: ' + ess.esc(s.admin_note) + '</span>' : '';
       return (
         '<div class="sub-row">' +
         '<div><strong>' + ess.esc(s.package_name) + '</strong><br>' +
-        '<span class="muted">฿' + ess.formatMoney(s.amount) + ' · สมัครเมื่อ ' + ess.formatDate(s.created_at) + '</span></div>' +
+        '<span class="muted">เลขที่ ' + ess.esc(s.order_no || '-') + ' · ฿' + ess.formatMoney(s.amount) + ' · สมัครเมื่อ ' + ess.formatDate(s.created_at) + '</span>' +
+        note + '</div>' +
         '<div class="sub-right">' + ess.statusLabel(s.status) +
         (period ? '<br><span class="muted">' + ess.esc(period) + '</span>' : '') +
         actions + '</div>' +
         '</div>'
       );
     }).join('');
+
+    list.querySelectorAll('[data-cancel-sub]').forEach(function (b) {
+      b.addEventListener('click', async function () {
+        if (!confirm('ยกเลิกคำสั่งซื้อนี้?')) return;
+        const { data, error } = await supabase.rpc('cancel_subscription', { p_sub_id: b.dataset.cancelSub });
+        if (error) { ess.toast('ยกเลิกไม่สำเร็จ: ' + error.message, 'error'); return; }
+        ess.toast(data ? 'ยกเลิกแล้ว' : 'ยกเลิกไม่ได้ (สถานะไม่ใช่ pending)', 'success');
+        setTimeout(function () { window.location.reload(); }, 900);
+      });
+    });
   }
 })();
