@@ -406,6 +406,17 @@ grant execute on function public.resubmit_subscription(uuid, text) to authentica
 grant execute on function public.admin_approve_subscription(uuid, text) to authenticated;
 grant execute on function public.admin_reject_subscription(uuid, text) to authenticated;
 
+-- lock anonymous callers out (the app always runs as authenticated)
+revoke execute on function public.gen_order_no() from public;
+revoke execute on function public.handle_sub_order_no() from public;
+revoke execute on function public.checkin_member(text) from public;
+revoke execute on function public.expire_subscriptions() from public;
+revoke execute on function public.expire_pending_orders(integer) from public;
+revoke execute on function public.cancel_subscription(uuid) from public;
+revoke execute on function public.resubmit_subscription(uuid, text) from public;
+revoke execute on function public.admin_approve_subscription(uuid, text) from public;
+revoke execute on function public.admin_reject_subscription(uuid, text) from public;
+
 -- ============================================================
 -- 14) OPTIONAL: daily maintenance schedule (pg_cron)
 --     Enable "pg_cron" in Supabase Dashboard > Database > Extensions,
