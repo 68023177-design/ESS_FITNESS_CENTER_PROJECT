@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>สมัครสมาชิก - ESS Fitness Center</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏋️</text></svg>">
+</head>
+<body data-page="register">
+  <nav id="navbar" class="navbar"></nav>
+  <div id="toast-box" class="toast-box"></div>
+
+  <main class="auth-wrap">
+    <div class="card auth-card">
+      <h1 class="auth-title">สมัครสมาชิก</h1>
+      <p class="muted">สร้างบัญชีเพื่อสมัครแพคเกจและจ่ายเงินผ่านคิวอาร์โค้ด</p>
+      <form id="register-form" novalidate>
+        <div class="field">
+          <label for="full-name">ชื่อ-นามสกุล *</label>
+          <input type="text" id="full-name" name="full_name" required placeholder="สมชาย ใจดี">
+        </div>
+        <div class="field">
+          <label for="email">อีเมล *</label>
+          <input type="email" id="email" name="email" autocomplete="email" required placeholder="you@up.ac.th">
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="student-id">รหัสนักศึกษา</label>
+            <input type="text" id="student-id" name="student_id" placeholder="63xxxxxxxx">
+          </div>
+          <div class="field">
+            <label for="phone">เบอร์โทรศัพท์</label>
+            <input type="tel" id="phone" name="phone" placeholder="08xxxxxxxx">
+          </div>
+        </div>
+        <div class="field">
+          <label for="sex">เพศ</label>
+          <select id="sex" name="sex">
+            <option value="other">ไม่ระบุ</option>
+            <option value="male">ชาย</option>
+            <option value="female">หญิง</option>
+          </select>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="password">รหัสผ่าน *</label>
+            <input type="password" id="password" name="password" autocomplete="new-password" required placeholder="อย่างน้อย 6 ตัว">
+          </div>
+          <div class="field">
+            <label for="confirm-password">ยืนยันรหัสผ่าน *</label>
+            <input type="password" id="confirm-password" autocomplete="new-password" required placeholder="พิมพ์อีกครั้ง">
+          </div>
+        </div>
+        <p id="form-error" class="form-error"></p>
+        <button type="submit" class="btn btn-primary btn-block">สมัครสมาชิก</button>
+      </form>
+      <p class="auth-switch">มีบัญชีอยู่แล้ว? <a href="login.html">เข้าสู่ระบบ</a></p>
+    </div>
+  </main>
+
+  <footer class="footer"><p>ESS Fitness Center · มหาวิทยาลัยพะเยา</p></footer>
+
+  <script src="js/vendor/supabase.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

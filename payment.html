@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ชำระเงินด้วย QR - ESS Fitness Center</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏋️</text></svg>">
+</head>
+<body data-page="payment">
+  <nav id="navbar" class="navbar"></nav>
+  <div id="toast-box" class="toast-box"></div>
+
+  <main class="container narrow">
+    <h1 class="section-title">ชำระเงินด้วยคิวอาร์โค้ด</h1>
+    <div class="card">
+      <p id="pay-sub-status" class="muted"></p>
+
+      <div id="pay-step" style="display:none;">
+        <div class="qr-box">
+          <canvas id="qr-canvas" width="0" height="0"></canvas>
+          <p id="qr-amount-hint" class="qr-hint"></p>
+        </div>
+        <p class="muted">1. สแกนคิวอาร์โค้ดด้วยแอปธนาคาร แล้วโอนตามยอดที่แสดง</p>
+        <p class="muted">2. ถ่ายรูปสลิปการโอน แล้วอัปโหลดด้านล่างเพื่อยืนยันการชำระเงิน</p>
+
+        <div class="field">
+          <label for="slip-file">รูปสลิปการโอนเงิน</label>
+          <input type="file" id="slip-file" accept="image/*" required>
+        </div>
+        <div id="slip-preview" class="slip-preview"></div>
+        <button type="button" id="btn-submit-slip" class="btn btn-primary btn-block">ยืนยันชำระเงิน</button>
+      </div>
+
+      <div id="pay-done" style="display:none;">
+        <p class="muted">สถานะคำสั่งซื้อนี้ถูกตรวจสอบแล้ว คุณสามารถติดตามได้ที่หน้าโปรไฟล์</p>
+        <div id="slip-preview-done" class="slip-preview"></div>
+        <a href="profile.html" class="btn btn-primary">ไปหน้าโปรไฟล์</a>
+      </div>
+    </div>
+  </main>
+
+  <script src="js/vendor/supabase.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/qrcode.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

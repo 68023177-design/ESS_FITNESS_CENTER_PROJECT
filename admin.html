@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>จัดการระบบ - ESS Fitness Center</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏋️</text></svg>">
+</head>
+<body data-page="admin">
+  <nav id="navbar" class="navbar"></nav>
+  <div id="toast-box" class="toast-box"></div>
+
+  <main class="container">
+    <h1 class="section-title">จัดการระบบ</h1>
+
+    <div class="stats-grid">
+      <div class="card stat"><div class="stat-num" id="stat-members">0</div><div class="stat-label">สมาชิกทั้งหมด</div></div>
+      <div class="card stat"><div class="stat-num" id="stat-sub">0</div><div class="stat-label">แพคเกจที่ใช้งานอยู่</div></div>
+      <div class="card stat"><div class="stat-num" id="stat-pending">0</div><div class="stat-label">รอตรวจสอบการชำระเงิน</div></div>
+      <div class="card stat"><div class="stat-num" id="stat-subs">0</div><div class="stat-label">รายการสมัครทั้งหมด</div></div>
+    </div>
+
+    <div class="tabs">
+      <button type="button" class="tab-btn" data-tab-btn="packages">แพคเกจ</button>
+      <button type="button" class="tab-btn" data-tab-btn="payments">การชำระเงิน</button>
+      <button type="button" class="tab-btn" data-tab-btn="members">สมาชิก</button>
+      <button type="button" class="tab-btn" data-tab-btn="news">ข่าวสาร</button>
+      <button type="button" class="tab-btn" data-tab-btn="settings">ตั้งค่า</button>
+    </div>
+
+    <div class="tab-pane tab-show" data-tab-pane="packages">
+      <div class="pane-head">
+        <h2>จัดการแพคเกจ</h2>
+        <button type="button" id="btn-add-pkg" class="btn btn-primary">+ เพิ่มแพคเกจ</button>
+      </div>
+      <div class="table-wrap">
+        <table class="table" id="packages-table">
+          <thead>
+            <tr><th>ชื่อแพคเกจ</th><th>รายละเอียด</th><th>ราคา</th><th>ระยะเวลา</th><th>สถานะ</th><th>จัดการ</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="tab-pane" data-tab-pane="payments">
+      <div class="pane-head">
+        <h2>คำสั่งซื้อ &amp; การชำระเงิน</h2>
+      </div>
+      <div id="subs-list"></div>
+    </div>
+
+    <div class="tab-pane" data-tab-pane="members">
+      <div class="pane-head">
+        <h2>สมาชิกทั้งหมด</h2>
+      </div>
+      <div class="field">
+        <input type="text" id="member-search" placeholder="ค้นหาชื่อ / อีเมล / รหัสนักศึกษา...">
+      </div>
+      <div class="table-wrap">
+        <table class="table" id="members-table">
+          <thead>
+            <tr><th>ชื่อ</th><th>อีเมล</th><th>รหัสนักศึกษา</th><th>เบอร์โทร</th><th>บทบาท</th><th>สมัครเมื่อ</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="tab-pane" data-tab-pane="news">
+      <div class="pane-head">
+        <h2>จัดการข่าวสาร</h2>
+        <button type="button" id="btn-add-news" class="btn btn-primary">+ เพิ่มข่าวสาร</button>
+      </div>
+      <div id="news-admin-list"></div>
+    </div>
+
+    <div class="tab-pane" data-tab-pane="settings">
+      <div class="pane-head">
+        <h2>ตั้งค่าระบบ</h2>
+      </div>
+      <div class="card">
+        <form id="settings-form" novalidate>
+          <div class="field">
+            <label for="set-promptpay">เบอร์พร้อมเพย์ (PromptPay) ของศูนย์ออกกำลังกาย</label>
+            <input type="text" id="set-promptpay" placeholder="เช่น 0800000000 หรือ เลขบัตรประชาชน 13 หลัก">
+            <p class="muted">ใช้สร้างคิวอาร์โค้ดสำหรับชำระเงินแพคเกจอัตโนมัติ</p>
+          </div>
+          <button type="submit" class="btn btn-primary">บันทึกการตั้งค่า</button>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <!-- package modal -->
+  <div class="modal" id="pkg-modal">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3 id="pkg-modal-title">เพิ่มแพคเกจ</h3>
+        <button type="button" id="pkg-modal-close" class="modal-close">✕</button>
+      </div>
+      <form id="pkg-form" novalidate>
+        <div class="field">
+          <label for="pkg-name">ชื่อแพคเกจ *</label>
+          <input type="text" id="pkg-name" required>
+        </div>
+        <div class="field">
+          <label for="pkg-desc">รายละเอียด</label>
+          <textarea id="pkg-desc" rows="2"></textarea>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="pkg-price">ราคา (บาท) *</label>
+            <input type="number" id="pkg-price" min="0" step="0.01" required>
+          </div>
+          <div class="field">
+            <label for="pkg-duration">ระยะเวลา (เดือน) *</label>
+            <input type="number" id="pkg-duration" min="1" step="1" required>
+          </div>
+        </div>
+        <div class="field check-field">
+          <label><input type="checkbox" id="pkg-active"> เปิดขายแพคเกจนี้</label>
+        </div>
+        <div class="modal-foot">
+          <button type="button" id="pkg-modal-cancel" class="btn btn-outline">ยกเลิก</button>
+          <button type="submit" class="btn btn-primary">บันทึก</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- news modal -->
+  <div class="modal" id="news-modal">
+    <div class="modal-box modal-box-news">
+      <div class="modal-head">
+        <h3 id="news-modal-title">เพิ่มข่าวสาร</h3>
+        <button type="button" id="news-modal-close" class="modal-close">✕</button>
+      </div>
+      <form id="news-form" novalidate>
+        <input type="hidden" id="news-existing-img">
+        <div class="field">
+          <label for="news-title">หัวข้อข่าว *</label>
+          <input type="text" id="news-title" required>
+        </div>
+        <div class="field">
+          <label for="news-content">เนื้อหา</label>
+          <textarea id="news-content" rows="5"></textarea>
+        </div>
+        <div class="field">
+          <label for="news-img-file">รูปภาพประกอบ (ไม่บังคับ, ไม่เกิน 5 MB)</label>
+          <input type="file" id="news-img-file" accept="image/*">
+          <div id="news-img-preview" class="news-preview"></div>
+        </div>
+        <div class="field check-field">
+          <label><input type="checkbox" id="news-published"> เปิดประกาศ (แสดงให้สมาชิกเห็น)</label>
+        </div>
+        <div class="modal-foot">
+          <button type="button" id="news-modal-cancel" class="btn btn-outline">ยกเลิก</button>
+          <button type="submit" class="btn btn-primary">บันทึก</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- slip modal -->
+  <div class="modal" id="slip-modal">
+    <div class="modal-box modal-box-slip">
+      <div class="modal-head">
+        <h3>สลิปการชำระเงิน</h3>
+        <button type="button" id="slip-modal-close" class="modal-close">✕</button>
+      </div>
+      <img id="slip-modal-img" class="slip-modal-img" alt="สลิป">
+    </div>
+  </div>
+
+  <script src="js/vendor/supabase.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>

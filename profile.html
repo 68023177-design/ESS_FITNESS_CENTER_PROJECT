@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>โปรไฟล์ - ESS Fitness Center</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏋️</text></svg>">
+</head>
+<body data-page="profile">
+  <nav id="navbar" class="navbar"></nav>
+  <div id="toast-box" class="toast-box"></div>
+
+  <main class="container">
+    <h1 class="section-title">โปรไฟล์ของฉัน</h1>
+
+    <div class="grid-2">
+      <div class="card">
+        <h2 class="card-title">ข้อมูลสมาชิก</h2>
+        <dl class="profile-list">
+          <dt>ชื่อ-นามสกุล</dt><dd id="pv-name">-</dd>
+          <dt>อีเมล</dt><dd id="pv-email">-</dd>
+          <dt>รหัสนักศึกษา</dt><dd id="pv-student">-</dd>
+          <dt>เบอร์โทรศัพท์</dt><dd id="pv-phone">-</dd>
+          <dt>เพศ</dt><dd id="pv-sex">-</dd>
+          <dt>บทบาท</dt><dd id="pv-role">-</dd>
+          <dt>สมัครเป็นสมาชิกเมื่อ</dt><dd id="pv-joined">-</dd>
+        </dl>
+      </div>
+
+      <div class="card">
+        <h2 class="card-title">แก้ไขข้อมูล</h2>
+        <form id="profile-edit-form" novalidate>
+          <div class="field">
+            <label for="pe-full-name">ชื่อ-นามสกุล</label>
+            <input type="text" id="pe-full-name">
+          </div>
+          <div class="field">
+            <label for="pe-student-id">รหัสนักศึกษา</label>
+            <input type="text" id="pe-student-id">
+          </div>
+          <div class="field">
+            <label for="pe-phone">เบอร์โทรศัพท์</label>
+            <input type="tel" id="pe-phone">
+          </div>
+          <div class="field">
+            <label for="pe-sex">เพศ</label>
+            <select id="pe-sex">
+              <option value="other">ไม่ระบุ</option>
+              <option value="male">ชาย</option>
+              <option value="female">หญิง</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">บันทึกข้อมูล</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 class="card-title">เปลี่ยนรหัสผ่าน</h2>
+      <form id="pw-form" novalidate>
+        <div class="field">
+          <label for="pw-new">รหัสผ่านใหม่</label>
+          <input type="password" id="pw-new" autocomplete="new-password" placeholder="อย่างน้อย 6 ตัวอักษร">
+        </div>
+        <button type="submit" class="btn btn-outline">เปลี่ยนรหัสผ่าน</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2 class="card-title">แพคเกจของฉัน</h2>
+      <div id="my-subs"></div>
+    </div>
+  </main>
+
+  <script src="js/vendor/supabase.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
