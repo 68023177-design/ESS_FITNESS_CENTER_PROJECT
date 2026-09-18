@@ -179,7 +179,10 @@
         ess.toast('เช็คอินล้มเหลว: ' + error.message, 'error');
         return;
       }
-      showResultModal(data || {});
+      // checkin_member returns a TABLE -> supabase-js gives us an array.
+      // Normalize to a single row before rendering.
+      const row = Array.isArray(data) ? (data[0] || {}) : (data || {});
+      showResultModal(row);
       loadToday();
     } finally {
       btnEl.disabled = false;
