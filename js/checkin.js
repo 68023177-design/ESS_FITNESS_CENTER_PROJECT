@@ -223,8 +223,14 @@
 
     const [cnt, list] = await Promise.all([
       supabase.from('visits').select('id', { count: 'exact', head: true }).gte('checked_in_at', startOfDay),
-      supabase.from('visits').select('*, profiles(full_name)').gte('checked_in_at', startOfDay).order('checked_in_at', { ascending: false }).limit(50),
+      // visits has TWO FKs to profiles (user_id + checkin_by), so PostgREST
+      // needs the constraint named explicitly to pick which profile to join.
+      supabase.from('visits').select('*, profiles!visits_user_id_fkey(full_name)').gte('checked_in_at', startOfDay).order('checked_in_at', { ascending: false }).limit(50),
     ]);
+
+    if (list.error) {
+      console.error('loadToday visit list error:', list.error);
+    }
 
     const cntEl = document.getElementById('today-count');
     if (cntEl) cntEl.textContent = 'เข้าวันนี้ ' + (cnt.count || 0) + ' ครั้ง';
