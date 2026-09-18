@@ -10,6 +10,10 @@
 -- ============================================================
 alter table public.profiles add column if not exists member_code uuid;
 
+-- PENDING/NEW signups must get a QR code automatically (the signup
+-- trigger does not set it), so the column must self-fill by default.
+alter table public.profiles alter column member_code set default gen_random_uuid();
+
 update public.profiles set member_code = gen_random_uuid() where member_code is null;
 
 create unique index if not exists profiles_member_code_idx
