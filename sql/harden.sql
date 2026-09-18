@@ -16,6 +16,17 @@ revoke execute on function public.resubmit_subscription(uuid, text) from public;
 revoke execute on function public.admin_approve_subscription(uuid, text) from public;
 revoke execute on function public.admin_reject_subscription(uuid, text) from public;
 
+-- Supabase also grants new functions directly to `anon` (not just PUBLIC)
+revoke execute on function public.gen_order_no() from anon;
+revoke execute on function public.handle_sub_order_no() from anon;
+revoke execute on function public.checkin_member(text) from anon;
+revoke execute on function public.expire_subscriptions() from anon;
+revoke execute on function public.expire_pending_orders(integer) from anon;
+revoke execute on function public.cancel_subscription(uuid) from anon;
+revoke execute on function public.resubmit_subscription(uuid, text) from anon;
+revoke execute on function public.admin_approve_subscription(uuid, text) from anon;
+revoke execute on function public.admin_reject_subscription(uuid, text) from anon;
+
 -- (optional) block anonymous users inside the functions themselves too
 create or replace function public.checkin_member(p_member_code text)
 returns table (
