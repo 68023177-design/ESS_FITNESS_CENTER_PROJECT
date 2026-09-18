@@ -139,11 +139,20 @@ as $$
 declare
   v_profile public.profiles%rowtype;
   v_sub     public.subscriptions%rowtype;
+  v_code    text;
   v_count   integer;
 begin
+  -- only authenticated users may check members in (anonymous locked out)
+  if auth.uid() is null then
+    raise exception 'authentication required';
+  end if;
+
+  -- normalize the scanned code: drop outer whitespace, ignore case
+  v_code := lower(btrim(p_member_code));
+
   select * into v_profile
     from public.profiles
-    where member_code::text = p_member_code;
+    where lower(btrim(member_code::text)) = v_code;
   if not found then
     return query select false, 'ไม่พบสมาชิก ตรวจสอบคิวอาร์โค้ดอีกครั้ง',
       null::text, null::text, null::integer, null::integer;

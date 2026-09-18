@@ -1,33 +1,11 @@
 -- ============================================================
--- ESS Fitness Center - security hardening (run once in SQL Editor)
--- By default PostgreSQL grants EXECUTE to PUBLIC on new functions.
--- These RPCs are used by the web app, which always runs as an
--- authenticated user - so anonymous callers must be locked out.
+-- ESS Fitness Center - check-in lookup hardening
+-- Normalizes the scanned value (trim + lowercase) before matching
+-- so a valid member QR is never rejected over case / whitespace.
+-- Also the function already requires an authenticated caller.
 -- Idempotent: safe to run more than once.
 -- ============================================================
 
-revoke execute on function public.gen_order_no() from public;
-revoke execute on function public.handle_sub_order_no() from public;
-revoke execute on function public.checkin_member(text) from public;
-revoke execute on function public.expire_subscriptions() from public;
-revoke execute on function public.expire_pending_orders(integer) from public;
-revoke execute on function public.cancel_subscription(uuid) from public;
-revoke execute on function public.resubmit_subscription(uuid, text) from public;
-revoke execute on function public.admin_approve_subscription(uuid, text) from public;
-revoke execute on function public.admin_reject_subscription(uuid, text) from public;
-
--- Supabase also grants new functions directly to `anon` (not just PUBLIC)
-revoke execute on function public.gen_order_no() from anon;
-revoke execute on function public.handle_sub_order_no() from anon;
-revoke execute on function public.checkin_member(text) from anon;
-revoke execute on function public.expire_subscriptions() from anon;
-revoke execute on function public.expire_pending_orders(integer) from anon;
-revoke execute on function public.cancel_subscription(uuid) from anon;
-revoke execute on function public.resubmit_subscription(uuid, text) from anon;
-revoke execute on function public.admin_approve_subscription(uuid, text) from anon;
-revoke execute on function public.admin_reject_subscription(uuid, text) from anon;
-
--- (optional) block anonymous users inside the functions themselves too
 create or replace function public.checkin_member(p_member_code text)
 returns table (
   ok           boolean,
@@ -99,3 +77,5 @@ end;
 $$;
 
 grant execute on function public.checkin_member(text) to authenticated;
+revoke execute on function public.checkin_member(text) from public;
+revoke execute on function public.checkin_member(text) from anon;

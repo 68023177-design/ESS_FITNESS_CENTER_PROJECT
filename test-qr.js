@@ -115,6 +115,22 @@ for (const [target, amount, ec] of cases) {
   }
 }
 
+// member-card QRs encode profiles.member_code (a uuid string) exactly
+const uuid = 'b6b08e0a-fcad-4445-9240-5cd74106a2db';
+for (const ec2 of ['M', 'L']) {
+  const qr2 = QR.createMatrix(uuid, ec2);
+  const img2 = matrixToRGBA(qr2.matrix, qr2.size, 8);
+  const result2 = jsQR(img2.data, img2.width, img2.height);
+  const ok2 = result2 && result2.data === uuid;
+  console.log((ok2 ? 'DECODE-PASS' : 'DECODE-FAIL') + ' member_code uuid ec=' + ec2 +
+    ' (version ' + qr2.version + ')');
+  if (!ok2) {
+    console.log('  expected: ' + uuid);
+    console.log('  decoded : ' + (result2 && result2.data));
+    allPass = false;
+  }
+}
+
 // render one sample PNG for the user
 const sample = QR.createMatrix(QR.promptpayPayload('0812345678', 300), 'M');
 writePNG('assets/test-qr.png', sample.matrix, sample.size, 6);

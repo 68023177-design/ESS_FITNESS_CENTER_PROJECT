@@ -116,7 +116,7 @@
   async function searchMember(text) {
     const q = String(text || '').trim().toLowerCase();
     if (!q) { ess.toast('กรุณากรอกรหัส / ชื่อ / อีเมล / รหัสนักศึกษา', 'error'); return; }
-    let matches = filtersToText(q);
+    let matches = await filtersToText(q);
     if (!matches.length) return;
 
     const box = document.getElementById('checkin-result');
