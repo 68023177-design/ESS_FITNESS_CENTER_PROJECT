@@ -90,6 +90,10 @@ drop policy if exists "visits_select_own" on public.visits;
 create policy "visits_select_own" on public.visits
   for select using (auth.uid() = user_id);
 
+drop policy if exists "visits_select_operator" on public.visits;
+create policy "visits_select_operator" on public.visits
+  for select using (auth.uid() = checkin_by);
+
 -- ============================================================
 -- 4) NOTIFICATIONS: in-app alerts
 -- ============================================================
