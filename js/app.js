@@ -381,6 +381,9 @@
         return;
       }
       if (!data) { ess.toast('ส่งใหม่ไม่ได้ (คำสั่งซื้อนี้เปลี่ยนสถานะแล้ว)', 'error'); return; }
+      if (sub.slip_path && sub.slip_path !== path) {
+        supabase.storage.from('slips').remove([sub.slip_path]).catch(function () {});
+      }
       ess.toast('ส่งสลิปใหม่แล้ว รอแอดมินตรวจสอบ', 'success');
       setTimeout(function () { window.location.href = 'profile.html'; }, 1200);
     });

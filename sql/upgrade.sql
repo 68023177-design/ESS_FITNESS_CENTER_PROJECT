@@ -245,7 +245,10 @@ $$;
 
 -- ============================================================
 -- 9) RPC: resubmit_subscription(id, slip_path) - rejected -> pending
---     also deletes the old slip file from storage
+--     NOTE: the replaced slip is removed CLIENT-side via the
+--     Storage API (slips_delete_owner policy). Direct deletes on
+--     storage.objects are blocked by Supabase, so this function
+--     only swaps the metadata.
 -- ============================================================
 create or replace function public.resubmit_subscription(
   p_sub_id    uuid,
@@ -256,26 +259,13 @@ language plpgsql
 security definer
 set search_path = public
 as $$
-declare
-  v_old text;
 begin
-  select slip_path into v_old
-    from public.subscriptions
-    where id = p_sub_id and user_id = auth.uid();
-  if not found then
-    return false;
-  end if;
-
   update public.subscriptions
     set status = 'pending', slip_path = p_slip_path, admin_note = ''
-    where id = p_sub_id and status = 'rejected';
+    where id = p_sub_id and status = 'rejected'
+      and user_id = auth.uid();
   if not found then
     return false;
-  end if;
-
-  -- clean up the superseded slip so storage does not leak
-  if v_old is not null and v_old <> p_slip_path then
-    delete from storage.objects where bucket_id = 'slips' and name = v_old;
   end if;
 
   return true;
