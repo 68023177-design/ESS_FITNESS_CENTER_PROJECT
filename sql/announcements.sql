@@ -53,7 +53,7 @@ where not exists (select 1 from storage.buckets where id = 'announcements');
 
 drop policy if exists "announcements_img_insert_auth" on storage.objects;
 create policy "announcements_img_insert_auth" on storage.objects
-  for insert with check (bucket_id = 'announcements' and auth.role() = 'authenticated');
+  for insert with check (bucket_id = 'announcements' and auth.role() = 'authenticated' and public.is_admin());
 
 drop policy if exists "announcements_img_select_public" on storage.objects;
 create policy "announcements_img_select_public" on storage.objects
@@ -61,7 +61,7 @@ create policy "announcements_img_select_public" on storage.objects
 
 drop policy if exists "announcements_img_update_owner" on storage.objects;
 create policy "announcements_img_update_owner" on storage.objects
-  for update using (bucket_id = 'announcements' and auth.role() = 'authenticated');
+  for update using (bucket_id = 'announcements' and (auth.uid() = owner or public.is_admin()));
 
 drop policy if exists "announcements_img_delete_admin" on storage.objects;
 create policy "announcements_img_delete_admin" on storage.objects

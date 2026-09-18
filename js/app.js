@@ -13,6 +13,16 @@
 
   const NEWS_EXCERPT_LEN = 220;
 
+  // A stored PromptPay id only counts as real if it looks like a 10-digit
+  // mobile / 13-digit national ID. Placeholder or all-same-digit values from
+  // the seeded settings row should be ignored -> fall back to config default.
+  function isUsablePromptpayId(value) {
+    if (!value) return false;
+    const d = String(value).replace(/\D/g, '');
+    if (d.length !== 10 && d.length !== 13) return false;
+    return /^(.)\1+$/.test(d) ? false : true;
+  }
+
   function imageUrl(path) {
     if (!path) return '';
     return SUPABASE_URL + '/storage/v1/object/public/announcements/' + path;
@@ -297,7 +307,7 @@
 
     // promptpay id from settings (fallback to config default)
     const { data: settings } = await supabase.from('settings').select('key,value').eq('key', 'promptpay_id').maybeSingle();
-    const promptpayId = (settings && settings.value) || window.DEFAULT_PROMPTPAY_ID;
+    const promptpayId = isUsablePromptpayId(settings && settings.value) ? settings.value : window.DEFAULT_PROMPTPAY_ID;
 
     const statusEl = document.getElementById('pay-sub-status');
     statusEl.innerHTML =

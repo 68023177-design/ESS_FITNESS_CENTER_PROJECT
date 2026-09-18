@@ -183,9 +183,11 @@
       // Normalize to a single row before rendering.
       const row = Array.isArray(data) ? (data[0] || {}) : (data || {});
       showResultModal(row);
-      loadToday();
     } finally {
       btnEl.disabled = false;
+      // Always refresh today's visit list + count after a scan / manual
+      // search so the new record shows up immediately.
+      await loadToday();
     }
   }
 

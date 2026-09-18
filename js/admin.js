@@ -155,27 +155,32 @@
   initPackageForm();
 
   // ---------------- MEMBERS ----------------
+  let memberSearchTimer = 0;
   async function loadMembers() {
-    const { data } = await supabase
+    const q = (document.getElementById('member-search').value || '').trim();
+    let qb = supabase
       .from('profiles')
       .select('*')
       .order('created_at', { ascending: false });
+    if (q) {
+      qb = qb.or(
+        'full_name.ilike.%' + q + ',email.ilike.%' + q + ',student_id.ilike.%' + q
+      ).limit(100);
+    }
+    const { data } = await qb;
     renderMembers(data || []);
   }
   const memberSearch = document.getElementById('member-search');
   if (memberSearch) {
-    memberSearch.addEventListener('input', async function () {
-      loadMembers();
+    memberSearch.addEventListener('input', function () {
+      clearTimeout(memberSearchTimer);
+      memberSearchTimer = setTimeout(loadMembers, 250);
     });
   }
 
   function renderMembers(members) {
     const tbody = document.querySelector('#members-table tbody');
-    const q = (document.getElementById('member-search').value || '').toLowerCase().trim();
-    const filtered = members.filter(function (m) {
-      return (m.full_name + ' ' + m.email + ' ' + (m.student_id || '')).toLowerCase().indexOf(q) !== -1;
-    });
-    tbody.innerHTML = filtered.map(function (m) {
+    tbody.innerHTML = members.map(function (m) {
       return '<tr>' +
         '<td><strong>' + ess.esc(m.full_name || '-') + '</strong></td>' +
         '<td>' + ess.esc(m.email) + '</td>' +
@@ -465,6 +470,10 @@
       const digits = value.replace(/\D/g, '');
       if (digits.length !== 10 && digits.length !== 13) {
         ess.toast('เบอร์พร้อมเพย์ต้องเป็นเบอร์โทร 10 หลัก หรือ เลข 13 หลัก', 'error');
+        return;
+      }
+      if (/^(.)\1+$/.test(digits)) {
+        ess.toast('ไม่สามารถใช้เบอร์ที่เป็นเลขซ้ำทั้งหมดได้', 'error');
         return;
       }
       const { data, error } = await supabase.from('settings').upsert({ key: 'promptpay_id', value: digits });
