@@ -218,10 +218,12 @@ create policy "settings_update_admin" on public.settings
 
 -- ============================================================
 -- STORAGE: private bucket for payment slips
--- ============================================================
+-- NOTE: use INSERT...WHERE NOT EXISTS - storage.buckets may have no
+-- unique index on id on newer Supabase versions, which makes the
+-- ON CONFLICT clause fail with SQLSTATE 42P10.
 insert into storage.buckets (id, name, public)
-values ('slips', 'slips', false)
-on conflict (id) do nothing;
+select 'slips', 'slips', false
+where not exists (select 1 from storage.buckets where id = 'slips');
 
 drop policy if exists "slips_insert_auth" on storage.objects;
 create policy "slips_insert_auth" on storage.objects
@@ -277,10 +279,9 @@ create policy "announcements_delete_admin" on public.announcements
 
 -- ============================================================
 -- STORAGE: public bucket for announcement cover images
--- ============================================================
 insert into storage.buckets (id, name, public)
-values ('announcements', 'announcements', true)
-on conflict (id) do nothing;
+select 'announcements', 'announcements', true
+where not exists (select 1 from storage.buckets where id = 'announcements');
 
 drop policy if exists "announcements_img_insert_auth" on storage.objects;
 create policy "announcements_img_insert_auth" on storage.objects

@@ -45,9 +45,11 @@ create policy "announcements_delete_admin" on public.announcements
   for delete using (public.is_admin());
 
 -- ----- STORAGE: public bucket for announcement cover images -----
+-- NOTE: INSERT...WHERE NOT EXISTS (no ON CONFLICT - storage.buckets
+-- may lack a unique index on id on newer Supabase versions, 42P10)
 insert into storage.buckets (id, name, public)
-values ('announcements', 'announcements', true)
-on conflict (id) do nothing;
+select 'announcements', 'announcements', true
+where not exists (select 1 from storage.buckets where id = 'announcements');
 
 drop policy if exists "announcements_img_insert_auth" on storage.objects;
 create policy "announcements_img_insert_auth" on storage.objects
