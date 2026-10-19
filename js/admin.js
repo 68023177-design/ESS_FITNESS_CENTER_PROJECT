@@ -29,8 +29,19 @@
         btn.classList.add('tab-active');
         const pane = document.querySelector('[data-tab-pane="' + btn.dataset.tabBtn + '"]');
         if (pane) pane.classList.add('tab-show');
+        refreshTab(btn.dataset.tabBtn);
       });
     });
+  }
+
+  // ดึงข้อมูลใหม่ทุกครั้งที่กดแท็บ เพื่อไม่ให้เห็นข้อมูลค้าง (เช่น แจ้งเหตุที่เพิ่งส่ง)
+  function refreshTab(name) {
+    if (name === 'issues') loadIssues();
+    else if (name === 'trainers') loadTrainers();
+    else if (name === 'payments') loadSubscriptions();
+    else if (name === 'packages') loadPackages();
+    else if (name === 'news') loadNews();
+    else if (name === 'members') loadMembers();
   }
 
   async function loadStats() {
@@ -628,16 +639,37 @@
     instagram: 'Instagram',
     other: 'อื่นๆ',
   };
+  const TRAINER_FORM_IDS = ['trainer-name', 'trainer-contact-type', 'trainer-contact-value', 'trainer-rate', 'trainer-active', 'trainer-img-file'];
+  const TRAINER_DEFAULT_CONTACT_TYPE = 'phone';
+  const TRAINER_BUCKET = 'trainer-images';
+  const TRAINER_MAX_IMG_BYTES = 5 * 1024 * 1024;
+
+  function trainerImgUrl(path) {
+    return path ? SUPABASE_URL + '/storage/v1/object/public/' + TRAINER_BUCKET + '/' + path : '';
+  }
+
+  // กันไว้ก่อน: ถ้า HTML กับ JS ไม่ตรงกัน ให้ขึ้นข้อความชัดเจนแทนที่จะ error เงียบ ๆ
+  function trainerFormReady() {
+    const missing = TRAINER_FORM_IDS.filter(function (id) { return !document.getElementById(id); });
+    if (!missing.length) return true;
+    ess.toast('ฟอร์มเทรนเนอร์ไม่สมบูรณ์ (ขาด: ' + missing.join(', ') + ')', 'error');
+    return false;
+  }
 
   async function loadTrainers() {
-    const { data } = await supabase.from('trainers').select('*').order('created_at', { ascending: false });
+    const { data, error } = await supabase.from('trainers').select('*').order('created_at', { ascending: false });
+    if (error) { ess.toast('โหลดรายชื่อเทรนเนอร์ไม่สำเร็จ: ' + error.message, 'error'); }
     renderTrainers(data || []);
   }
 
   function renderTrainers(trainers) {
     const tbody = document.querySelector('#trainers-table tbody');
     tbody.innerHTML = trainers.map(function (t) {
+      const photo = t.image_path
+        ? '<img class="trainer-thumb" src="' + trainerImgUrl(t.image_path) + '" alt="' + ess.esc(t.name) + '" loading="lazy">'
+        : '<span class="trainer-thumb trainer-thumb-empty" aria-hidden="true">–</span>';
       return '<tr>' +
+        '<td>' + photo + '</td>' +
         '<td><strong>' + ess.esc(t.name) + '</strong></td>' +
         '<td>' + ess.esc(TRAINER_CONTACT_LABELS[t.contact_type] || t.contact_type) + ': ' + ess.esc(t.contact_value) + '</td>' +
         '<td>' + (t.rate ? ess.esc(t.rate) : '-') + '</td>' +
@@ -647,7 +679,7 @@
         '<button type="button" class="btn btn-sm btn-outline" data-toggle-trainer="' + t.id + '">' + (t.active ? 'ปิดใช้' : 'เปิดใช้') + '</button> ' +
         '<button type="button" class="btn btn-sm btn-danger-outline" data-del-trainer="' + t.id + '">ลบ</button>' +
         '</td></tr>';
-    }).join('') || '<tr><td colspan="5" class="muted">ยังไม่มีเทรนเนอร์</td></tr>';
+    }).join('') || '<tr><td colspan="6" class="muted">ยังไม่มีเทรนเนอร์</td></tr>';
 
     tbody.querySelectorAll('[data-edit-trainer]').forEach(function (b) {
       b.addEventListener('click', function () {
@@ -671,28 +703,47 @@
         if (!t || !confirm('ลบเทรนเนอร์ "' + t.name + '"?')) return;
         const { error } = await supabase.rpc('admin_delete_trainer', { p_id: t.id });
         if (error) { ess.toast('ลบไม่สำเร็จ: ' + error.message, 'error'); return; }
+        if (t.image_path) {
+          supabase.storage.from(TRAINER_BUCKET).remove([t.image_path]).catch(function () {});
+        }
         ess.toast('ลบเทรนเนอร์แล้ว', 'success');
         loadTrainers();
       });
     });
 
     const addBtn = document.getElementById('btn-add-trainer');
-    if (addBtn) {
-      addBtn.onclick = null;
+    if (addBtn && !addBtn.dataset.bound) {
+      addBtn.dataset.bound = '1';
       addBtn.addEventListener('click', function () { openTrainerForm(null); });
     }
   }
 
   function openTrainerForm(t) {
     const modal = document.getElementById('trainer-modal');
-    if (!modal) return;
+    if (!modal || !trainerFormReady()) return;
     modal.classList.add('modal-show');
-    document.getElementById('trainer-name').value = t ? t.name : '';
-    document.getElementById('trainer-contact-type').value = t ? t.contact_type : '';
-    document.getElementById('trainer-contact-value').value = t ? t.contact_value : '';
+    document.getElementById('trainer-name').value = t ? (t.name || '') : '';
+    const typeSel = document.getElementById('trainer-contact-type');
+    typeSel.value = t && t.contact_type ? t.contact_type : TRAINER_DEFAULT_CONTACT_TYPE;
+    if (!typeSel.value) typeSel.value = 'other';
+    document.getElementById('trainer-contact-value').value = t ? (t.contact_value || '') : '';
     document.getElementById('trainer-rate').value = t ? (t.rate || '') : '';
-    document.getElementById('trainer-active').checked = t ? t.active : true;
+    document.getElementById('trainer-active').checked = t ? !!t.active : true;
     document.getElementById('trainer-form').dataset.id = t ? t.id : '';
+
+    // รูปภาพ: เพิ่มใหม่ / แก้ไข / ลบรูปเดิม
+    const existing = (t && t.image_path) || '';
+    document.getElementById('trainer-existing-img').value = existing;
+    document.getElementById('trainer-img-file').value = '';
+    const removeBox = document.getElementById('trainer-remove-img');
+    if (removeBox) removeBox.checked = false;
+    const removeWrap = document.getElementById('trainer-remove-img-wrap');
+    if (removeWrap) removeWrap.style.display = existing ? 'block' : 'none';
+    const preview = document.getElementById('trainer-img-preview');
+    preview.innerHTML = existing
+      ? '<img src="' + trainerImgUrl(existing) + '" alt="รูปปัจจุบัน">'
+      : '';
+
     document.getElementById('trainer-modal-title').textContent = t ? 'แก้ไขเทรนเนอร์' : 'เพิ่มเทรนเนอร์';
   }
 
@@ -700,8 +751,39 @@
     const form = document.getElementById('trainer-form');
     if (!form || form.dataset.bound) return;
     form.dataset.bound = '1';
+
+    const fileInput = document.getElementById('trainer-img-file');
+    const preview = document.getElementById('trainer-img-preview');
+    const removeBox = document.getElementById('trainer-remove-img');
+    const removeWrap = document.getElementById('trainer-remove-img-wrap');
+
+    if (fileInput) {
+      fileInput.addEventListener('change', function () {
+        const f = fileInput.files && fileInput.files[0];
+        if (!f) return;
+        if (f.type.indexOf('image/') !== 0) {
+          ess.toast('กรุณาเลือกไฟล์รูปภาพเท่านั้น', 'error');
+          fileInput.value = '';
+          return;
+        }
+        if (f.size > TRAINER_MAX_IMG_BYTES) {
+          ess.toast('รูปภาพต้องไม่เกิน 5 MB', 'error');
+          fileInput.value = '';
+          return;
+        }
+        if (removeBox) removeBox.checked = false;
+        const reader = new FileReader();
+        reader.onload = function (ev) {
+          preview.innerHTML = '<img src="' + ev.target.result + '" alt="รูปใหม่">';
+        };
+        reader.readAsDataURL(f);
+      });
+    }
+
     form.addEventListener('submit', async function (ev) {
       ev.preventDefault();
+      if (!trainerFormReady()) return;
+
       const id = form.dataset.id || '';
       const name = document.getElementById('trainer-name').value.trim();
       const contactType = document.getElementById('trainer-contact-type').value;
@@ -717,23 +799,63 @@
       const btn = form.querySelector('button[type="submit"]');
       btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
 
-      let error;
-      if (id) {
-        ({ error } = await supabase.rpc('admin_update_trainer', {
-          p_id: id, p_name: name, p_contact_type: contactType, p_contact_value: contactValue, p_rate: rate, p_active: active,
-        }));
-      } else {
-        ({ error } = await supabase.rpc('admin_create_trainer', {
-          p_name: name, p_contact_type: contactType, p_contact_value: contactValue, p_rate: rate, p_active: active,
-        }));
-      }
+      const oldImg = document.getElementById('trainer-existing-img').value || '';
+      const file = fileInput && fileInput.files && fileInput.files[0];
+      // ถ้าเลือกรูปใหม่ รูปใหม่มีความสำคัญกว่า (ไม่ต้องลบรูปเดิม)
+      const wantRemove = !!(removeBox && removeBox.checked) && !file;
+      let imagePath = wantRemove ? '' : oldImg;
+      let uploadedPath = '';
 
-      btn.disabled = false; btn.textContent = 'บันทึก';
-      if (error) { ess.toast('บันทึกไม่สำเร็จ: ' + error.message, 'error'); return; }
-      ess.toast('บันทึกเทรนเนอร์สำเร็จ', 'success');
-      document.getElementById('trainer-modal').classList.remove('modal-show');
-      form.reset(); form.dataset.id = '';
-      loadTrainers();
+      try {
+        // อัปโหลดรูปใหม่ก่อน (ชื่อไฟล์สุ่ม ไม่ต้องรู้ id ของแถว)
+        if (file) {
+          const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^\w]/g, '') || 'jpg';
+          uploadedPath = 'trainers/' + Date.now() + '-' + Math.random().toString(36).slice(2) + '.' + ext;
+          const { error: upErr } = await supabase.storage
+            .from(TRAINER_BUCKET)
+            .upload(uploadedPath, file, { upsert: false, contentType: file.type });
+          if (upErr) throw upErr;
+          imagePath = uploadedPath;
+        }
+
+        let error;
+        if (id) {
+          ({ error } = await supabase.rpc('admin_update_trainer', {
+            p_id: id, p_name: name, p_contact_type: contactType, p_contact_value: contactValue,
+            p_rate: rate, p_active: active, p_image_path: imagePath,
+          }));
+        } else {
+          ({ error } = await supabase.rpc('admin_create_trainer', {
+            p_name: name, p_contact_type: contactType, p_contact_value: contactValue,
+            p_rate: rate, p_active: active, p_image_path: imagePath,
+          }));
+        }
+        if (error) throw error;
+
+        // เก็บกวาดรูปเก่า (ถ้าเปลี่ยนรูปหรือลบรูป)
+        if (oldImg && oldImg !== imagePath) {
+          supabase.storage.from(TRAINER_BUCKET).remove([oldImg]).catch(function () {});
+        }
+
+        ess.toast('บันทึกเทรนเนอร์สำเร็จ', 'success');
+        document.getElementById('trainer-modal').classList.remove('modal-show');
+        form.reset();
+        form.dataset.id = '';
+        document.getElementById('trainer-active').checked = true;
+        document.getElementById('trainer-existing-img').value = '';
+        if (preview) preview.innerHTML = '';
+        if (removeBox) removeBox.checked = false;
+        if (removeWrap) removeWrap.style.display = 'none';
+        loadTrainers();
+      } catch (e) {
+        // ถ้าบันทึกไม่สำเร็จ อย่าทิ้งไฟล์รูปที่อัปโหลดไว้ค้างใน storage
+        if (uploadedPath) {
+          supabase.storage.from(TRAINER_BUCKET).remove([uploadedPath]).catch(function () {});
+        }
+        ess.toast('บันทึกไม่สำเร็จ: ' + (e && e.message ? e.message : e), 'error');
+      } finally {
+        btn.disabled = false; btn.textContent = 'บันทึก';
+      }
     });
 
     const closeBtn = document.getElementById('trainer-modal-close');
@@ -743,6 +865,10 @@
     const cancelBtn = document.getElementById('trainer-modal-cancel');
     if (cancelBtn) cancelBtn.addEventListener('click', function () {
       document.getElementById('trainer-modal').classList.remove('modal-show');
+    });
+    const modal = document.getElementById('trainer-modal');
+    if (modal) modal.addEventListener('click', function (ev) {
+      if (ev.target === modal) modal.classList.remove('modal-show');
     });
   }
 
@@ -763,10 +889,56 @@
 
   let issuesCache = [];
 
+  // ตัวนับ "แจ้งเหตุที่ค้าง" บนการ์ดสรุป (กดที่การ์ดเพื่อไปดูรายงานได้เลย)
+  function setPendingIssueCount(issues) {
+    const n = (issues || []).filter(function (r) {
+      return r.status === 'open' || r.status === 'in_progress';
+    }).length;
+    setStat('stat-issues', n);
+  }
+
+  function initIssueStatCard() {
+    const card = document.getElementById('stat-issues-card');
+    if (!card || card.dataset.bound) return;
+    card.dataset.bound = '1';
+    card.addEventListener('click', function () {
+      const btn = document.querySelector('[data-tab-btn="issues"]');
+      if (btn) btn.click();
+    });
+  }
+  initIssueStatCard();
+
   async function loadIssues() {
-    const { data } = await supabase.rpc('admin_list_maintenance_requests', { p_status: null });
-    issuesCache = data || [];
+    const res = await supabase.rpc('admin_list_maintenance_requests', { p_status: null });
+    let rows = res.data;
+    let error = res.error;
+
+    // สำรอง: ถ้า RPC ยังไม่ถูกติดตั้งในฐานข้อมูล ให้อ่านตรงจากตารางแทน
+    // (RLS ของตารางเปิดให้ admin อ่านได้อยู่แล้ว)
+    if (error) {
+      const alt = await supabase
+        .from('maintenance_requests')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (!alt.error && alt.data) {
+        rows = alt.data;
+        error = null;
+      }
+    }
+
+    if (error) {
+      issuesCache = [];
+      const box = document.getElementById('issues-admin-list') || document.getElementById('issues-list');
+      if (box) {
+        box.innerHTML = '<div class="card"><p class="muted">โหลดรายงานแจ้งเหตุไม่สำเร็จ: ' +
+          ess.esc(error.message) + '</p></div>';
+      }
+      ess.toast('โหลดรายงานแจ้งเหตุไม่สำเร็จ: ' + error.message, 'error');
+      return;
+    }
+    issuesCache = rows || [];
     renderIssues(issuesCache);
+    setPendingIssueCount(issuesCache);
     const filter = document.getElementById('issue-filter');
     if (filter && !filter.dataset.bound) {
       filter.dataset.bound = '1';
@@ -778,7 +950,7 @@
   }
 
   function renderIssues(issues) {
-    const box = document.getElementById('issues-admin-list');
+    const box = document.getElementById('issues-admin-list') || document.getElementById('issues-list');
     if (!box) return;
     if (!issues.length) {
       box.innerHTML = '<div class="card"><p class="muted">ไม่มีรายงานแจ้งเหตุ</p></div>';
@@ -806,11 +978,14 @@
         'รายละเอียด: ' + ess.esc(r.description) + '<br>' +
         'ส่งเมื่อ: ' + ess.formatDate(r.created_at) +
         '</span>' +
-        (r.admin_note ? '<br><span class="muted">บันทึกภายใน: ' + ess.esc(r.admin_note) + '</span>' : '') +
         '</div>' +
-        '<div class="sub-right" style="min-width:190px;">' +
+        '<div class="sub-right" style="min-width:220px;">' +
         '<div class="field" style="margin-bottom:8px;">' +
         '<select data-issue-status="' + r.id + '" style="width:100%;">' + statusOptions + '</select>' +
+        '</div>' +
+        '<div class="field" style="margin-bottom:8px;">' +
+        '<input type="text" data-issue-note="' + r.id + '" style="width:100%;" ' +
+        'placeholder="หมายเหตุภายใน (ผู้แจ้งจะเห็น)" value="' + ess.esc(r.admin_note || '') + '">' +
         '</div>' +
         '<div class="row-actions">' +
         '<button type="button" class="btn btn-sm btn-primary" data-save-issue="' + r.id + '">บันทึกสถานะ</button> ' +
@@ -828,8 +1003,10 @@
         const id = b.dataset.saveIssue;
         const sel = box.querySelector('[data-issue-status="' + id + '"]');
         const status = sel ? sel.value : 'open';
+        const noteEl = box.querySelector('[data-issue-note="' + id + '"]');
+        const note = noteEl ? noteEl.value.trim() : '';
         const { error } = await supabase.rpc('admin_update_maintenance_request', {
-          p_id: id, p_status: status, p_admin_note: '',
+          p_id: id, p_status: status, p_admin_note: note,
         });
         if (error) { ess.toast('อัปเดตไม่สำเร็จ: ' + error.message, 'error'); return; }
         ess.toast('อัปเดตสถานะแจ้งเหตุแล้ว', 'success');

@@ -28,6 +28,11 @@
     return SUPABASE_URL + '/storage/v1/object/public/announcements/' + path;
   }
 
+  function trainerImageUrl(path) {
+    if (!path) return '';
+    return SUPABASE_URL + '/storage/v1/object/public/trainer-images/' + path;
+  }
+
   function excerpt(text, len) {
     text = String(text == null ? '' : text);
     if (text.length <= len) return text;
@@ -727,10 +732,13 @@
     }
 
     wrap.innerHTML = data.map(function (t) {
+      const photo = t.image_path
+        ? '<img class="trainer-photo" src="' + trainerImageUrl(t.image_path) + '" alt="' + ess.esc(t.name) + '" loading="lazy">'
+        : '<span class="trainer-avatar" aria-hidden="true">' + ess.esc((t.name || '?').charAt(0)) + '</span>';
       return (
         '<div class="card trainer-card">' +
         '<div class="trainer-card-head">' +
-        '<span class="trainer-avatar" aria-hidden="true">' + ess.esc((t.name || '?').charAt(0)) + '</span>' +
+        photo +
         '<div><h3 class="trainer-name">' + ess.esc(t.name) + '</h3>' +
         '<span class="muted">' + ess.esc(CONTACT_TYPE_LABELS[t.contact_type] || t.contact_type) + '</span></div>' +
         '</div>' +
@@ -850,11 +858,15 @@
       return;
     }
     box.innerHTML = data.map(function (r) {
+      const note = r.admin_note
+        ? '<br><span class="muted">หมายเหตุจากผู้ดูแล: ' + ess.esc(r.admin_note) + '</span>'
+        : '';
       return (
         '<div class="sub-row">' +
         '<div><strong>' + ess.esc(r.title) + '</strong><br>' +
         '<span class="muted">' + ess.esc(categoryLabel(r.category)) +
-        (r.location ? ' · ' + ess.esc(r.location) : '') + ' · ส่ง ' + ess.formatDate(r.created_at) + '</span></div>' +
+        (r.location ? ' · ' + ess.esc(r.location) : '') + ' · ส่ง ' + ess.formatDate(r.created_at) + '</span>' +
+        note + '</div>' +
         '<div class="sub-right">' + issueStatusBadge(r.status) + '</div>' +
         '</div>'
       );

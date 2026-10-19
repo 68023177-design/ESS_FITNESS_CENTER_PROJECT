@@ -13,10 +13,15 @@ create table if not exists public.trainers (
   contact_type   text not null check (contact_type in ('phone','line','facebook','instagram','other')),
   contact_value  text not null,
   rate           text not null default '',
+  image_path     text not null default '',
   active         boolean not null default true,
   created_at     timestamptz not null default now(),
   updated_at     timestamptz not null default now()
 );
+
+-- เผื่อกรณีตารางเดิมถูกสร้างมาก่อนหน้านี้แล้ว (ยังไม่มีคอลัมน์รูปภาพ)
+alter table public.trainers
+  add column if not exists image_path text not null default '';
 
 create index if not exists trainers_active_idx
   on public.trainers (active, created_at desc);
@@ -106,11 +111,17 @@ create policy "mr_delete_admin" on public.maintenance_requests
   for delete using (public.is_admin());
 
 -- ============================================================
--- 3) STORAGE: bucket issue-images (private)
+-- 3) STORAGE: buckets
+--    - issue-images (private) : รูปแนบจากผู้แจ้งเหตุ
+--    - trainer-images (public): รูปประจำเทรนเนอร์
 -- ============================================================
 insert into storage.buckets (id, name, public)
 select 'issue-images', 'issue-images', false
 where not exists (select 1 from storage.buckets where id = 'issue-images');
+
+insert into storage.buckets (id, name, public)
+select 'trainer-images', 'trainer-images', true
+where not exists (select 1 from storage.buckets where id = 'trainer-images');
 
 -- SELECT: admin หรือ owner
 drop policy if exists "issue_img_select" on storage.objects;
@@ -148,6 +159,24 @@ create policy "issue_img_delete_admin" on storage.objects
     bucket_id = 'issue-images' and public.is_admin()
   );
 
+-- ----- trainer-images (public bucket) -----
+drop policy if exists "trainer_img_select_public" on storage.objects;
+create policy "trainer_img_select_public" on storage.objects
+  for select using (bucket_id = 'trainer-images');
+
+drop policy if exists "trainer_img_insert_admin" on storage.objects;
+create policy "trainer_img_insert_admin" on storage.objects
+  for insert with check (bucket_id = 'trainer-images' and public.is_admin());
+
+drop policy if exists "trainer_img_update_admin" on storage.objects;
+create policy "trainer_img_update_admin" on storage.objects
+  for update using (bucket_id = 'trainer-images' and public.is_admin())
+  with check (bucket_id = 'trainer-images' and public.is_admin());
+
+drop policy if exists "trainer_img_delete_admin" on storage.objects;
+create policy "trainer_img_delete_admin" on storage.objects
+  for delete using (bucket_id = 'trainer-images' and public.is_admin());
+
 -- ============================================================
 -- 4) TRIGGER: auto-update updated_at
 -- ============================================================
@@ -174,13 +203,21 @@ create trigger trg_mr_updated_at
 
 -- ============================================================
 -- 5) RPC: Trainers (admin CRUD) - สอดคล้องกับแนวทาง admin_*
+--    p_image_path = null -> ไม่เปลี่ยนรูปเดิม, '' -> ลบรูป
 -- ============================================================
+
+-- ลบ signature เดิม (ที่ยังไม่รองรับรูป) ก่อน ไม่งั้นจะมี 2 overload
+-- และเรียกด้วย named args จะเจอ "function call is ambiguous"
+drop function if exists public.admin_create_trainer(text,text,text,text,boolean);
+drop function if exists public.admin_update_trainer(uuid,text,text,text,text,boolean);
+
 create or replace function public.admin_create_trainer(
   p_name text,
   p_contact_type text,
   p_contact_value text,
   p_rate text,
-  p_active boolean default true
+  p_active boolean default true,
+  p_image_path text default null
 )
 returns public.trainers
 language plpgsql
@@ -193,16 +230,16 @@ begin
   if not public.is_admin() then
     raise exception 'forbidden';
   end if;
-  insert into public.trainers (name, contact_type, contact_value, rate, active)
-  values (p_name, p_contact_type, p_contact_value, p_rate, coalesce(p_active,true))
+  insert into public.trainers (name, contact_type, contact_value, rate, active, image_path)
+  values (p_name, p_contact_type, p_contact_value, p_rate, coalesce(p_active,true), coalesce(p_image_path,''))
   returning * into v_row;
   return v_row;
 end;
 $$;
 
 drop policy if exists "trainers_rpc_block_anon" on public.trainers;
-revoke all on function public.admin_create_trainer(text,text,text,text,boolean) from public, anon;
-grant execute on function public.admin_create_trainer(text,text,text,text,boolean) to authenticated;
+revoke all on function public.admin_create_trainer(text,text,text,text,boolean,text) from public, anon;
+grant execute on function public.admin_create_trainer(text,text,text,text,boolean,text) to authenticated;
 
 create or replace function public.admin_update_trainer(
   p_id uuid,
@@ -210,7 +247,8 @@ create or replace function public.admin_update_trainer(
   p_contact_type text,
   p_contact_value text,
   p_rate text,
-  p_active boolean
+  p_active boolean,
+  p_image_path text default null
 )
 returns public.trainers
 language plpgsql
@@ -228,15 +266,16 @@ begin
          contact_type = p_contact_type,
          contact_value = p_contact_value,
          rate = p_rate,
-         active = p_active
+         active = p_active,
+         image_path = coalesce(p_image_path, trainers.image_path)
    where id = p_id
   returning * into v_row;
   return v_row;
 end;
 $$;
 
-revoke all on function public.admin_update_trainer(uuid,text,text,text,text,boolean) from public, anon;
-grant execute on function public.admin_update_trainer(uuid,text,text,text,text,boolean) to authenticated;
+revoke all on function public.admin_update_trainer(uuid,text,text,text,text,boolean,text) from public, anon;
+grant execute on function public.admin_update_trainer(uuid,text,text,text,text,boolean,text) to authenticated;
 
 create or replace function public.admin_toggle_trainer_active(p_id uuid, p_active boolean)
 returns public.trainers

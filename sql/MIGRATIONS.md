@@ -29,6 +29,7 @@ where email = 'อีเมลของคุณ';
 | `fix-checkin-match.sql` | `checkin_member()` normalize (trim + lowercase) ก่อนเทียบ | เช็คอินปฏิเสธ QR ที่มีตัวอักษรพิมพ์เล็ก/เว้นวรรค |
 | `fix-resubmit.sql` | `resubmit_subscription()` เลิก `delete storage.objects` (ถูก Supabase บล็อก → 403) | การส่งสลิปใหม่ล้มเหลวตอนมีสลิปเก่า |
 | `fix-visits-operator-policy.sql` | เพิ่ม policy ให้ผู้เช็คอิน (`checkin_by`) อ่าน visits ที่ตนเองบันทึก | หน้าเช็คอินของเจ้าหน้าที่ที่ไม่ได้เป็น admin ขึ้นประวัติ "วันนี้" ว่าง |
+| `trainer_photos.sql` | เพิ่ม `trainers.image_path` + bucket `trainer-images` (public) + RPC `admin_create/update_trainer` เวอร์ชันรองรับรูป | ระบบเทรนเนอร์รัน `trainers_issues.sql` ไปแล้ว และต้องการเพิ่ม/แก้รูปเทรนเนอร์ (ต้องรันก่อนใช้ฟีเจอร์รูปเทรนเนอร์) |
 | `cleanup-test-data.sql` | สร้าง RPC `cleanup_test_data()` ลบข้อมูลเทสต์ (`%@ess.local`) เฉพาะ admin | ต้องการล้างข้อมูล E2E (ลบ RPC ได้ภายหลังด้วย drop function) |
 
 > โน้ตสำคัญ: ถ้ารันสคริปต์นี้แล้วแก้ปัญหา ให้**อัปเดต/yำสิทธิ์ความถูกต้องของ `setup.sql` / `upgrade.sql`** ด้วยเสมอ เพื่อให้ฐานใหม่ไม่กลับมีบั๊กซ้ำ (เช่น เราแก้ policy bucket แล้วต้องแก้ที่ `setup.sql` + `announcements.sql` ด้วย)
