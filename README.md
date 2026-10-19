@@ -86,3 +86,16 @@ npm run deploy     # สร้าง dist/ แล้วใช้ wrangler pages 
 - กระทำผ่าน RLS + RPC (`security definer`) ทั้งหมด — ตัวอย่าง: `checkin_member()` บังคับให้ผู้เรียกต้องเป็น authenticated, `admin_*` RPC ตรวจ `is_admin()`
 - Anonymous ถูก revoke จาก RPC ทั้งหมด (ดู `sql/upgrade.sql`)
 - สลิปการโอนเก็บใน bucket เอกชน (`slips`) เปิดดูด้วย signed URL เท่านั้น
+
+## ฟีเจอร์เสริมล่าสุด: ระบบเทรนเนอร์ + ระบบแจ้งเหตุ
+
+รัน `sql/trainers_issues.sql` ใน Supabase SQL Editor เพื่อเพิ่ม 2 ตาราง + bucket `issue-images` (private) + RPC ที่เกี่ยวข้อง
+
+### ระบบเทรนเนอร์
+- **Admin**: จัดการแท็บ "เทรนเนอร์" ใน `admin.html` — เพิ่ม/แก้ไข/ลบ/เปิด-ปิดใช้งาน พร้อมชื่อ, ช่องทางติดต่อ (แยกประเภท), เรทราคา
+- **สมาชิก**: ดูรายชื่อเทรนเนอร์ที่ `trainers.html` (ต้องล็อกอินเท่านั้น)
+
+### ระบบแจ้งเหตุ
+- **ทุกคน**: แจ้งเหตุ/ปัญหาได้ที่ `report-issue.html` — เลือกหมวดหมู่, แนบรูป (เฉพาะสมาชิกที่ล็อกอิน), ไม่ต้องล็อกอินก็แจ้งได้
+- **สมาชิก**: ดูสถานะรายงานของตนเองใน `profile.html` (ส่วน "รายงานแจ้งเหตุของฉัน")
+- **Admin**: จัดการแท็บ "แจ้งเหตุ" ใน `admin.html` — เปลี่ยนสถานะ (`open`/`in_progress`/`resolved`/`closed`), ดูรูป (signed URL), ลบรายงาน

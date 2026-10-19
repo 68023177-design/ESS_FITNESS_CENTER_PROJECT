@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>รายชื่อเทรนเนอร์ - ESS Fitness Center</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏋️</text></svg>">
+</head>
+<body data-page="trainers">
+  <nav id="navbar" class="navbar"></nav>
+  <div id="toast-box" class="toast-box"></div>
+
+  <main class="container">
+    <h1 class="section-title">รายชื่อเทรนเนอร์</h1>
+    <p class="muted">รายชื่อเทรนเนอร์ที่พร้อมให้บริการ (เฉพาะสมาชิกที่เข้าสู่ระบบเท่านั้น)</p>
+
+    <div id="trainers-wrap" class="grid-auto"></div>
+    <div id="trainers-guest" class="card" style="display:none;">
+      <p class="muted">กรุณาเข้าสู่ระบบเพื่อดูรายชื่อเทรนเนอร์</p>
+      <a href="login.html" class="btn btn-primary">เข้าสู่ระบบ</a>
+    </div>
+  </main>
+
+  <script src="js/vendor/supabase.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -116,6 +116,8 @@
     inner += '<a href="index.html" data-nav="index">หน้าแรก</a>';
     inner += '<a href="packages.html" data-nav="packages">แพคเกจ</a>';
     if (session) {
+      inner += '<a href="trainers.html" data-nav="trainers">เทรนเนอร์</a>';
+      inner += '<a href="report-issue.html" data-nav="report-issue">แจ้งเหตุ</a>';
       inner += '<a href="profile.html" data-nav="profile">โปรไฟล์</a>';
       if (isAdmin) inner += '<a href="admin.html" data-nav="admin">จัดการระบบ</a>';
       if (isAdmin) inner += '<a href="checkin.html" data-nav="checkin">เช็คอิน</a>';
@@ -124,6 +126,7 @@
         '<span id="nav-bell-badge" class="nav-bell-badge" style="display:none;">0</span></a>';
       inner += '<button type="button" class="btn-link" id="btn-logout">ออกจากระบบ</button>';
     } else {
+      inner += '<a href="report-issue.html" data-nav="report-issue">แจ้งเหตุ</a>';
       inner += '<a href="login.html" data-nav="login" class="nav-cta">เข้าสู่ระบบ</a>';
       inner += '<a href="register.html" data-nav="register" class="nav-cta nav-cta-solid">สมัครสมาชิก</a>';
     }

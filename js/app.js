@@ -42,6 +42,8 @@
     subscribe: initSubscribe,
     payment: initPayment,
     profile: initProfile,
+    trainers: initTrainers,
+    'report-issue': initReportIssue,
   };
 
   document.addEventListener('DOMContentLoaded', async function () {
@@ -528,6 +530,7 @@
 
     renderMemberCard(p, subs || []);
     renderMySubs(p, subs || []);
+    await loadMyIssues(p);
 
     // my notifications
     const notifBox = document.getElementById('my-notifs');
@@ -664,5 +667,197 @@
         setTimeout(function () { window.location.reload(); }, 900);
       });
     });
+  }
+
+  // ---------------- TRAINER / ISSUE HELPERS ----------------
+  const CONTACT_TYPE_LABELS = {
+    phone: 'เบอร์โทร',
+    line: 'Line',
+    facebook: 'Facebook',
+    instagram: 'Instagram',
+    other: 'อื่นๆ',
+  };
+
+  const ISSUE_CATEGORY_LABELS = {
+    equipment: 'เครื่องออกกำลังกาย',
+    electrical: 'ไฟฟ้า/แสงสว่าง',
+    plumbing: 'น้ำ/สุขภัณฑ์',
+    structure: 'โครงสร้าง/พื้น',
+    other: 'อื่นๆ',
+  };
+
+  const ISSUE_STATUS_META = {
+    open: ['เปิด', 'badge-pending'],
+    in_progress: ['กำลังดำเนินการ', 'badge'],
+    resolved: ['แก้ไขแล้ว', 'badge-active'],
+    closed: ['ปิด', 'badge-expired'],
+  };
+
+  function categoryLabel(cat) { return ISSUE_CATEGORY_LABELS[cat] || cat; }
+
+  function issueStatusBadge(status) {
+    const meta = ISSUE_STATUS_META[status] || [status, 'badge'];
+    return '<span class="badge ' + meta[1] + '">' + meta[0] + '</span>';
+  }
+
+  // ---------------- TRAINERS (member view, must be logged in) ----------------
+  async function initTrainers() {
+    const wrap = document.getElementById('trainers-wrap');
+    const guestBox = document.getElementById('trainers-guest');
+    if (!wrap) return;
+
+    const ctx = await ess.requireLogin();
+    if (!ctx) return;
+
+    if (guestBox) guestBox.style.display = 'none';
+
+    const { data, error } = await supabase
+      .from('trainers')
+      .select('*')
+      .eq('active', true)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      wrap.innerHTML = '<p class="muted">โหลดรายชื่อเทรนเนอร์ไม่สำเร็จ กรุณาลองใหม่ภายหลัง</p>';
+      return;
+    }
+    if (!data || !data.length) {
+      wrap.innerHTML = '<div class="card"><p class="muted">ยังไม่มีเทรนเนอร์ที่เปิดให้บริการในขณะนี้</p></div>';
+      return;
+    }
+
+    wrap.innerHTML = data.map(function (t) {
+      return (
+        '<div class="card trainer-card">' +
+        '<div class="trainer-card-head">' +
+        '<span class="trainer-avatar" aria-hidden="true">' + ess.esc((t.name || '?').charAt(0)) + '</span>' +
+        '<div><h3 class="trainer-name">' + ess.esc(t.name) + '</h3>' +
+        '<span class="muted">' + ess.esc(CONTACT_TYPE_LABELS[t.contact_type] || t.contact_type) + '</span></div>' +
+        '</div>' +
+        '<div class="trainer-body">' +
+        '<div class="trainer-contact"><strong>ช่องทางติดต่อ:</strong> ' + ess.esc(t.contact_value) + '</div>' +
+        (t.rate ? '<div class="trainer-rate"><strong>เรทราคา:</strong> ' + ess.esc(t.rate) + '</div>' : '') +
+        '</div>' +
+        '</div>'
+      );
+    }).join('');
+  }
+
+  // ---------------- REPORT ISSUE ----------------
+  async function initReportIssue() {
+    const form = document.getElementById('issue-form');
+    if (!form) return;
+
+    const session = await ess.getSession();
+    const profile = session ? await ess.getProfile() : null;
+    const imgInput = document.getElementById('issue-image');
+    const imgPreview = document.getElementById('issue-image-preview');
+
+    if (profile) {
+      const nameEl = document.getElementById('issue-name');
+      const emailEl = document.getElementById('issue-email');
+      if (nameEl) nameEl.value = profile.full_name || '';
+      if (emailEl) emailEl.value = profile.email || '';
+    }
+
+    if (imgInput && imgPreview) {
+      imgInput.addEventListener('change', function () {
+        const file = imgInput.files && imgInput.files[0];
+        if (!file) { imgPreview.style.display = 'none'; return; }
+        const reader = new FileReader();
+        reader.onload = function (ev) {
+          imgPreview.style.display = 'block';
+          imgPreview.querySelector('img').src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    form.addEventListener('submit', async function (ev) {
+      ev.preventDefault();
+
+      const name = document.getElementById('issue-name').value.trim();
+      const email = document.getElementById('issue-email').value.trim();
+      const title = document.getElementById('issue-title').value.trim();
+      const category = document.getElementById('issue-category').value;
+      const location = document.getElementById('issue-location').value.trim();
+      const description = document.getElementById('issue-desc').value.trim();
+
+      if (!name || !email || !title || !category || !description) {
+        ess.toast('กรุณากรอกข้อมูลให้ครบถ้วน', 'error');
+        return;
+      }
+
+      const btn = form.querySelector('button[type="submit"]');
+      btn.disabled = true; btn.textContent = 'กำลังส่ง...';
+
+      let imagePath = null;
+      const file = imgInput && imgInput.files && imgInput.files[0];
+      if (file && session) {
+        const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+        const path = session.user.id + '/' + Date.now() + '-' + Math.random().toString(36).slice(2) + '.' + ext;
+        const { error: upErr } = await supabase.storage
+          .from('issue-images')
+          .upload(path, file, { upsert: false, contentType: file.type });
+        if (upErr) {
+          ess.toast('อัปโหลดรูปไม่สำเร็จ (จะส่งรายงานแบบไม่แนบรูป): ' + upErr.message, 'error');
+        } else {
+          imagePath = path;
+        }
+      }
+
+      const { error } = await supabase
+        .from('maintenance_requests')
+        .insert([{
+          reporter_id: session ? session.user.id : null,
+          reporter_name: name,
+          reporter_email: email,
+          title: title,
+          category: category,
+          location: location,
+          description: description,
+          image_path: imagePath,
+        }]);
+
+      if (error) {
+        ess.toast('ส่งรายงานไม่สำเร็จ: ' + error.message, 'error');
+        btn.disabled = false; btn.textContent = 'ส่งรายงานแจ้งเหตุ';
+        return;
+      }
+
+      ess.toast('ส่งรายงานแจ้งเหตุสำเร็จ ขอบคุณครับ', 'success');
+      form.style.display = 'none';
+      const successBox = document.getElementById('issue-success');
+      if (successBox) successBox.style.display = 'block';
+    });
+  }
+
+  // ---------------- MY ISSUES (in profile) ----------------
+  async function loadMyIssues(profile) {
+    const box = document.getElementById('my-issues');
+    if (!box) return;
+    const { data, error } = await supabase
+      .from('maintenance_requests')
+      .select('*')
+      .eq('reporter_id', profile.id)
+      .order('created_at', { ascending: false });
+    if (error) {
+      box.innerHTML = '<p class="muted">โหลดประวัติการแจ้งเหตุไม่สำเร็จ</p>';
+      return;
+    }
+    if (!data || !data.length) {
+      box.innerHTML = '<p class="muted">ยังไม่เคยแจ้งเหตุ — <a href="report-issue.html">แจ้งเหตุครั้งแรก</a></p>';
+      return;
+    }
+    box.innerHTML = data.map(function (r) {
+      return (
+        '<div class="sub-row">' +
+        '<div><strong>' + ess.esc(r.title) + '</strong><br>' +
+        '<span class="muted">' + ess.esc(categoryLabel(r.category)) +
+        (r.location ? ' · ' + ess.esc(r.location) : '') + ' · ส่ง ' + ess.formatDate(r.created_at) + '</span></div>' +
+        '<div class="sub-right">' + issueStatusBadge(r.status) + '</div>' +
+        '</div>'
+      );
+    }).join('');
   }
 })();

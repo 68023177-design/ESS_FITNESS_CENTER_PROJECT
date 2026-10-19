@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>แจ้งเหตุ - ESS Fitness Center</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏋️</text></svg>">
+</head>
+<body data-page="report-issue">
+  <nav id="navbar" class="navbar"></nav>
+  <div id="toast-box" class="toast-box"></div>
+
+  <main class="container">
+    <h1 class="section-title">แจ้งเหตุ / รายงานปัญหา</h1>
+    <p class="muted">แจ้งปัญหาหรือสิ่งที่ชำรุดภายในศูนย์ออกกำลังกาย ทุกคนสามารถแจ้งเหตุได้</p>
+
+    <div class="card">
+      <form id="issue-form" novalidate>
+        <div class="grid-2">
+          <div class="field">
+            <label for="issue-name">ชื่อ-นามสกุล *</label>
+            <input type="text" id="issue-name" placeholder="กรุณากรอกชื่อ-นามสกุล" required>
+          </div>
+          <div class="field">
+            <label for="issue-email">อีเมล *</label>
+            <input type="email" id="issue-email" placeholder="example@mail.com" required>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="field">
+            <label for="issue-title">หัวข้อแจ้งเหตุ *</label>
+            <input type="text" id="issue-title" placeholder="เช่น เครื่องเดินชำรุด" required>
+          </div>
+          <div class="field">
+            <label for="issue-category">หมวดหมู่ *</label>
+            <select id="issue-category" required>
+              <option value="">เลือกหมวดหมู่</option>
+              <option value="equipment">เครื่องออกกำลังกาย</option>
+              <option value="electrical">ไฟฟ้า/แสงสว่าง</option>
+              <option value="plumbing">น้ำ/สุขภัณฑ์</option>
+              <option value="structure">โครงสร้าง/พื้น</option>
+              <option value="other">อื่นๆ</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="issue-location">สถานที่/อุปกรณ์</label>
+          <input type="text" id="issue-location" placeholder="เช่น โซนเวทเทรนนิ่ง / เครื่องจักรหมายเลข 3">
+        </div>
+
+        <div class="field">
+          <label for="issue-desc">รายละเอียด *</label>
+          <textarea id="issue-desc" rows="4" placeholder="อธิบายปัญหาให้ชัดเจน" required></textarea>
+        </div>
+
+        <div class="field">
+          <label for="issue-image">แนบรูป (ไม่บังคับ)</label>
+          <input type="file" id="issue-image" accept="image/*">
+          <p class="muted">รองรับไฟล์รูปภาพเท่านั้น • สมาชิกที่เข้าสู่ระบบเท่านั้นที่สามารถแนบรูปได้</p>
+          <div id="issue-image-preview" style="margin-top: .75rem; display:none;">
+            <img alt="preview" style="max-width: 180px; border-radius: .5rem; border:1px solid rgba(255,255,255,.1);">
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">ส่งรายงานแจ้งเหตุ</button>
+      </form>
+    </div>
+
+    <div id="issue-success" class="card" style="display:none; text-align:center;">
+      <h3>ส่งรายงานสำเร็จ</h3>
+      <p class="muted">ขอบคุณสำหรับการแจ้งเหตุ เราจะดำเนินการตรวจสอบและแก้ไขโดยเร็วที่สุด</p>
+      <a href="index.html" class="btn btn-primary">กลับหน้าหลัก</a>
+    </div>
+  </main>
+
+  <script src="js/vendor/supabase.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
